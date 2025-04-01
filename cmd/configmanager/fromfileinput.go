@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/dnitsch/configmanager/internal/cmdutils"
+	"github.com/DevLabFoundry/configmanager/internal/cmdutils"
 	"github.com/spf13/cobra"
 )
 
@@ -42,13 +42,13 @@ func newFromStrCmd(rootCmd *Root) {
 		},
 	}
 
-	fromstrCmd.PersistentFlags().StringVarP(&f.input, "input", "i", "", `Path to file which contents will be read in or the contents of a string 
-	inside a variable to be searched for tokens. 
-	If value is a valid path it will open it if not it will accept the string as an input. 
+	fromstrCmd.PersistentFlags().StringVarP(&f.input, "input", "i", "", `Path to file which contents will be read in or the contents of a string
+	inside a variable to be searched for tokens.
+	If value is a valid path it will open it if not it will accept the string as an input.
 	e.g. -i /some/file or -i $"(cat /som/file)", are both valid input values`)
 	fromstrCmd.MarkPersistentFlagRequired("input")
-	fromstrCmd.PersistentFlags().StringVarP(&f.path, "path", "p", "./app.env", `Path where to write out the 
-	replaced a config/secret variables. Special value of stdout can be used to return the output to stdout e.g. -p stdout, 
+	fromstrCmd.PersistentFlags().StringVarP(&f.path, "path", "p", "./app.env", `Path where to write out the
+	replaced a config/secret variables. Special value of stdout can be used to return the output to stdout e.g. -p stdout,
 	unix style output only`)
 	rootCmd.Cmd.AddCommand(fromstrCmd)
 }
