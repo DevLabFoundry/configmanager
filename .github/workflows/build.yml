@@ -10,7 +10,7 @@ jobs:
   set-version:
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/dotnet/sdk:6.0 
+      image: mcr.microsoft.com/dotnet/sdk:6.0
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:
@@ -32,7 +32,7 @@ jobs:
         id: gitversion
 
       - name: echo VERSIONS
-        run: | 
+        run: |
           echo "REVISION  -> $GITHUB_SHA"
           echo "VERSION -> $GITVERSION_SEMVER"
   test:
@@ -56,14 +56,14 @@ jobs:
 
       - name: install deps
         run: |
-          apt update && apt install -y jq git
+          apt update && apt install -y jq git unzip
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.email ${{ github.actor }}-ci@gha.org
           git config user.name ${{ github.actor }}
-      - name: Run Lint 
+      - name: Run Lint
         run: |
           task lint
-      - name: Run Tests 
+      - name: Run Tests
         run: |
           task coverage
       - name: Publish Junit style Test Report
@@ -71,16 +71,16 @@ jobs:
         if: always() # always run even if the previous step fails
         with:
           report_paths: '**/.coverage/report-junit.xml'
-      - name: Analyze with SonarCloud         
+      - name: Analyze with SonarCloud
         # You can pin the exact commit or the version.
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v5.1.0
         env:
           SEMVER: $SEMVER
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   # Generate a token on Sonarcloud.io, add it to the secrets of this repo with the name SONAR_TOKEN (Settings > Secrets > Actions > add new repository secret)
         with:
           # Additional arguments for the sonarcloud scanner
-          args:             
+          args:
             # mandatory
             -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }}
             -Dsonar.go.coverage.reportPaths=/github/workspace/.coverage/out
