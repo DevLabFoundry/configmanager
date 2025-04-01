@@ -11,8 +11,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azappconfig"
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/pkg/log"
 )
 
 // appConfApi

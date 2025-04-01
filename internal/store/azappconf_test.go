@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azappconfig"
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/internal/testutils"
-	logger "github.com/dnitsch/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/internal/testutils"
+	logger "github.com/DevLabFoundry/configmanager/pkg/log"
 )
 
 func azAppConfCommonChecker(t *testing.T, key string, expectedKey string, expectLabel string, opts *azappconfig.GetSettingOptions) {

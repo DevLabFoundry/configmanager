@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/internal/testutils"
-	"github.com/dnitsch/configmanager/pkg/log"
 )
 
 type mockSecretsApi func(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error)

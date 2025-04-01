@@ -8,8 +8,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/pkg/log"
 )
 
 type kvApi interface {

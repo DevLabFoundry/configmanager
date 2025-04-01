@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/internal/store"
-	"github.com/dnitsch/configmanager/internal/strategy"
-	"github.com/dnitsch/configmanager/internal/testutils"
-	"github.com/dnitsch/configmanager/pkg/generator"
-	"github.com/dnitsch/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/internal/store"
+	"github.com/DevLabFoundry/configmanager/internal/strategy"
+	"github.com/DevLabFoundry/configmanager/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/pkg/log"
 )
 
 type mockGenerate struct {
@@ -177,7 +177,7 @@ func Test_IsParsed(t *testing.T) {
 // 	"strings"
 // 	"testing"
 
-// 	"github.com/dnitsch/configmanager/internal/testutils"
+// 	"github.com/DevLabFoundry/configmanager/internal/testutils"
 // )
 
 // var (

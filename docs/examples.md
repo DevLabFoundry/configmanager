@@ -1,6 +1,6 @@
-# Examples 
+# Examples
 
-<!-- 
+<!--
 ```go
 rawStr := `somePAss: AWSPARAMSTR:///int-test/pocketbase/admin-pwd`
 cm := configmanager.ConfigManager{}
@@ -84,8 +84,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/dnitsch/configmanager/pkg/generator"
-	"github.com/dnitsch/configmanager"
+	"github.com/DevLabFoundry/configmanager/pkg/generator"
+	"github.com/DevLabFoundry/configmanager"
 )
 
 func main() {
@@ -128,8 +128,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/dnitsch/configmanager"
-	"github.com/dnitsch/configmanager/pkg/generator"
+	"github.com/DevLabFoundry/configmanager"
+	"github.com/DevLabFoundry/configmanager/pkg/generator"
 )
 
 var (

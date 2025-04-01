@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/pkg/generator"
 )
 
 // PostProcessor

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dnitsch/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/internal/config"
 )
 
 const implementationNetworkErr string = "implementation %s error: %v for token: %s"

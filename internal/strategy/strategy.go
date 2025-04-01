@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/internal/store"
-	"github.com/dnitsch/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/internal/store"
+	"github.com/DevLabFoundry/configmanager/pkg/log"
 )
 
 var ErrTokenInvalid = errors.New("invalid token - cannot get prefix")

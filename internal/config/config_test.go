@@ -3,8 +3,8 @@ package config_test
 import (
 	"testing"
 
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/internal/testutils"
 )
 
 func Test_SelfName(t *testing.T) {

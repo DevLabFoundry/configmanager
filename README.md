@@ -1,7 +1,7 @@
 # Config Manager
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/dnitsch/configmanager.svg)](https://pkg.go.dev/github.com/dnitsch/configmanager)
-[![Go Report Card](https://goreportcard.com/badge/github.com/dnitsch/configmanager)](https://goreportcard.com/report/github.com/dnitsch/configmanager)
+[![Go Reference](https://pkg.go.dev/badge/github.com/DevLabFoundry/configmanager.svg)](https://pkg.go.dev/github.com/DevLabFoundry/configmanager)
+[![Go Report Card](https://goreportcard.com/badge/github.com/DevLabFoundry/configmanager)](https://goreportcard.com/report/github.com/DevLabFoundry/configmanager)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=dnitsch_configmanager&metric=bugs)](https://sonarcloud.io/summary/new_code?id=dnitsch_configmanager)
 [![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=dnitsch_configmanager&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=dnitsch_configmanager)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=dnitsch_configmanager&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=dnitsch_configmanager)
@@ -11,7 +11,7 @@
 Package used for retrieving application settings from various sources.
 
 Currently supported variable and secrets implementations:
-<!-- 
+<!--
 "AWSSECRETS"
 	// AWS Parameter Store prefix
 	ParamStorePrefix ImplementationPrefix = "AWSPARAMSTR"
@@ -43,7 +43,7 @@ Currently supported variable and secrets implementations:
 
 The main driver is to use component level configuration objects, if stored in a `"namespaced"` manner e.g. in AWS ParamStore as `/nonprod/component-service-a/configVar`, however this is not a requirement and the param name can be whatever. Though whilst using some sort of a organised manner it will be more straight forward to allow other services to consume certain secrets/params based on resource/access policies.
 
-> Beware size limitation with certain config/vault implementations. In which case it's best to split certain items up e.g. TLS certs `/nonprod/component-service-a/pub-cert`, `/nonprod/component-service-a/private-cert`, `/nonprod/component-service-a/chain1-cert`, etc... 
+> Beware size limitation with certain config/vault implementations. In which case it's best to split certain items up e.g. TLS certs `/nonprod/component-service-a/pub-cert`, `/nonprod/component-service-a/private-cert`, `/nonprod/component-service-a/chain1-cert`, etc...
 
 Where `configVar` can be either a parseable string `'som3#!S$CRet'` or a number `3306` or a parseable single level JSON object like `{host: ..., pass: ...., port: ...}` which can be returned whole or accessed via a key separator for a specific value.
 
@@ -92,7 +92,7 @@ _An example token would look like this_
 
 The `AWSSECRETS` the strategy identifier to choose the correct provider at runtime. Multiple providers can be referenced in a single run via a CLI or with the API.
 
-This is not overrideable and must be exactly as it is in the provided list of providers. 
+This is not overrideable and must be exactly as it is in the provided list of providers.
 
 ### __Token Separator__
 
@@ -106,7 +106,7 @@ cnf := generator.NewConfig().WithTokenSeparator("://")
 
 ### __Provider Secret/Config Path__
 
-The `/path/to/my/key` part from the [example token](#awssecretspathtomykeylookupinsideobjectmetadata) is the actual path to the item in the backing store. 
+The `/path/to/my/key` part from the [example token](#awssecretspathtomykeylookupinsideobjectmetadata) is the actual path to the item in the backing store.
 
 See the different special considerations per provider as it different providers will require different implementations.
 
@@ -116,7 +116,7 @@ __THIS IS OPTIONAL__
 
 The `|` symbol from the [example token](#awssecretspathtomykeylookupinsideobjectmetadata) is used to specify the key seperator.
 
-If an item retrieved from a store is JSON parseable map it can be interrogated for further properties inside. 
+If an item retrieved from a store is JSON parseable map it can be interrogated for further properties inside.
 
 ### __Look up key__
 
@@ -154,7 +154,7 @@ See [examples of working with files](docs/examples.md#working-with-files) for mo
 
 ### Token Metadata Config
 
-The `[meta=data]` from the [example token](#awssecretspathtomykeylookupinsideobjectmetadata) - is the optional metadata about the target in the backing provider 
+The `[meta=data]` from the [example token](#awssecretspathtomykeylookupinsideobjectmetadata) - is the optional metadata about the target in the backing provider
 
 IT must have this format `[key=value]` - IT IS OPTIONAL
 
@@ -199,7 +199,7 @@ The token itself must contain all of the following properties, so that it would 
 
 - Storage account name [`STORAGE_ACCOUNT_NAME`]
 - Table Name [`TABLE_NAME`]
-	- > It might make sense to make this table global to the domain or project 
+	- > It might make sense to make this table global to the domain or project
 - Partition Key [`PARTITION_KEY`]
 	- > This could correspond to the component/service name
 - Row Key [`ROW_KEY`]
@@ -230,7 +230,7 @@ when using Vault in AWS - you can set the value of the `VAULT_TOKEN=aws_iam` thi
 
 The Hashicorp Vault functions in the same exact way as the other implementations. It will retrieve the JSON object and can be looked up within it by using a key separator.
 
-## [Go API](https://pkg.go.dev/github.com/dnitsch/configmanager)
+## [Go API](https://pkg.go.dev/github.com/DevLabFoundry/configmanager)
 
 ## [Examples](docs/examples.md)
 

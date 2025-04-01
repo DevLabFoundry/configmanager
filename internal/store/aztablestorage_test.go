@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/aztables"
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/internal/testutils"
-	"github.com/dnitsch/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/pkg/log"
 )
 
 func azTableStoreCommonChecker(t *testing.T, partitionKey, rowKey, expectedPartitionKey, expectedRowKey string) {

@@ -12,8 +12,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/aztables"
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/pkg/log"
 )
 
 var ErrIncorrectlyStructuredToken = errors.New("incorrectly structured token")
