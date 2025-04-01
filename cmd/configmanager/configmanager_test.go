@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	cmd "github.com/dnitsch/configmanager/cmd/configmanager"
-	"github.com/dnitsch/configmanager/pkg/log"
+	cmd "github.com/DevLabFoundry/configmanager/cmd/configmanager"
+	"github.com/DevLabFoundry/configmanager/pkg/log"
 )
 
 type cmdTestInput struct {

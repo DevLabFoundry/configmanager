@@ -69,7 +69,7 @@ tasks:
       internal/private package documentation
     cmd: |
       go install golang.org/x/tools/cmd/godoc@latest
-      open http://localhost:6060/pkg/github.com/dnitsch/configmanager/?m=all
+      open http://localhost:6060/pkg/github.com/DevLabFoundry/configmanager/?m=all
       godoc -notes "BUG|TODO" -play -http=:6060
 
   bin:
@@ -89,7 +89,7 @@ tasks:
           GOOS={{.GO_TARGET_ARCH}} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false {{.LDFLAGS}} -o ./dist/configmanager-{{.GO_TARGET_ARCH}} ./cmd
     vars:
       # LDFLAGS: -ldflags="-s -w -X \"github.com/dnitsch/async-api-generator/cmd/async-api-gen-doc.Version=${VERSION}\" -X \"github.com/dnitsch/async-api-generator/cmd/async-api-gen-doc.Revision={{.REVISION}}\" -extldflags -static"
-      LDFLAGS: -ldflags="-s -w -X \"github.com/dnitsch/configmanager/cmd/configmanager.Version=${VERSION}\" -X \"github.com/dnitsch/configmanager/cmd/configmanager.Revision={{.REVISION}}\" -extldflags -static"
+      LDFLAGS: -ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/cmd/configmanager.Revision={{.REVISION}}\" -extldflags -static"
       GO_ARCHS: darwin windows linux
 
   release:

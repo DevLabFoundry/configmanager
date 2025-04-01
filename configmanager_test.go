@@ -7,10 +7,10 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/dnitsch/configmanager"
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/internal/testutils"
-	"github.com/dnitsch/configmanager/pkg/generator"
+	"github.com/DevLabFoundry/configmanager"
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/pkg/generator"
 	"github.com/go-test/deep"
 )
 
@@ -94,13 +94,13 @@ space: preserved
 			input: `
 // TOML
 [[somestuff]]
-key = "FOO#/test" 
+key = "FOO#/test"
 `,
 			genvar: &mockGenerator{},
 			expect: `
 // TOML
 [[somestuff]]
-key = "val1" 
+key = "val1"
 `,
 		},
 		"strTomlWithoutQuotes": {
@@ -301,7 +301,7 @@ func Test_YamlRetrieveUnmarshalled(t *testing.T) {
 		"happy path complex struct complete": {
 			input: []byte(`foo: AWSSECRETS:///bar/foo
 bar: quz
-lol: 
+lol:
   bla: booo
   another:
     number: 1235
@@ -424,9 +424,9 @@ func TestFindTokens(t *testing.T) {
 	}{
 		"extract from text correctly": {
 			`Where does it come from?
-			Contrary to popular belief, 
+			Contrary to popular belief,
 			Lorem Ipsum is AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj <= in middle of sentencenot simply random text.
-			It has roots in a piece of classical Latin literature from 45 
+			It has roots in a piece of classical Latin literature from 45
 			BC, making it over 2000 years old. Richard McClintock, a Latin professor at
 			 Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, c
 			 onsectetur, from a Lorem Ipsum passage , at the end of line => AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
@@ -434,8 +434,8 @@ func TestFindTokens(t *testing.T) {
 			 lassical literature, discovered the undoubtable source. Lorem Ipsum comes from secti
 			 ons in singles =>'AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj'1.10.32 and 1.10.33 of "de Finibus Bonorum et Malorum" (The Extremes of Good and Evil)
 			 in doubles => "AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj"
-			  by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular 
-			  during the  :=> embedded in text RenaissanceAWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[] embedded in text <=: 
+			  by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular
+			  during the  :=> embedded in text RenaissanceAWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[] embedded in text <=:
 			  The first line of Lorem Ipsum, "Lorem ipsum dolor sit amet..", comes from a line in section 1.10.32.`,
 			[]string{
 				"AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",

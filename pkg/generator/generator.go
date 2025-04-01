@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/internal/store"
-	"github.com/dnitsch/configmanager/internal/strategy"
-	"github.com/dnitsch/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/internal/store"
+	"github.com/DevLabFoundry/configmanager/internal/strategy"
+	"github.com/DevLabFoundry/configmanager/pkg/log"
 	"github.com/spyzhov/ajson"
 )
 

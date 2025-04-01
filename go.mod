@@ -1,4 +1,4 @@
-module github.com/dnitsch/configmanager
+module github.com/DevLabFoundry/configmanager
 
 go 1.23.2
 

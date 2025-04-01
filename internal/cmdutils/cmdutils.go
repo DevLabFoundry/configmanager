@@ -11,9 +11,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dnitsch/configmanager/internal/config"
-	"github.com/dnitsch/configmanager/pkg/generator"
-	"github.com/dnitsch/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/internal/config"
+	"github.com/DevLabFoundry/configmanager/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/pkg/log"
 	"github.com/spf13/cobra"
 )
 
