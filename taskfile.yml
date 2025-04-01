@@ -2,7 +2,7 @@
 version: '3'
 
 env:
-  OWNER: dnitsch
+  OWNER: DevLabFoundry
   NAME: configmanager
   GO_TARGET_ARCH: "darwin"
   GIT_TAG: "0.0.0"
@@ -10,7 +10,7 @@ env:
   REVISION: '{{.REVISION | default "aaaa1234" }}'
 
 tasks:
-  test_prereq: 
+  test_prereq:
     internal: true
     preconditions:
       - go version
@@ -32,7 +32,7 @@ tasks:
     internal: false
     deps:
       - test_prereq
-    cmds: 
+    cmds:
       - |
         set -exo pipefail
         go test ./... -v -buildvcs=false -mod=readonly -race -coverprofile=.coverage/out > .coverage/unit ; cat .coverage/unit
@@ -42,9 +42,9 @@ tasks:
     internal: true
     cmd: |
       go mod tidy
-  
+
   lint:
-    desc: Runs lint and vet 
+    desc: Runs lint and vet
     cmd: |
       go vet
 
@@ -52,11 +52,11 @@ tasks:
     desc: generate coverage
     deps:
       - test
-    cmds: 
+    cmds:
       - go-junit-report -in .coverage/unit > .coverage/report-junit.xml
       - gocov convert .coverage/out | gocov-xml > .coverage/report-cobertura.xml
 
-  show_coverage: 
+  show_coverage:
     desc: Opens the current coverage viewer for the the configmanager utility.
     deps:
       - coverage
@@ -72,20 +72,20 @@ tasks:
       open http://localhost:6060/pkg/github.com/dnitsch/configmanager/?m=all
       godoc -notes "BUG|TODO" -play -http=:6060
 
-  bin: 
+  bin:
     desc: Generates binaries in a dist folder
     summary: |
       Generates all the binaries for the configmanager utility.
 
       can be called from inside CI like this:
-      
+
       `task bin GIT_TAG=0.1.2 REVISION=$commit_sha`
     deps:
       - clean_go
     cmds:
       - cmd: mkdir -p ./dist
       - for: { var: GO_ARCHS, as: GO_TARGET_ARCH }
-        cmd: | 
+        cmd: |
           GOOS={{.GO_TARGET_ARCH}} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false {{.LDFLAGS}} -o ./dist/configmanager-{{.GO_TARGET_ARCH}} ./cmd
     vars:
       # LDFLAGS: -ldflags="-s -w -X \"github.com/dnitsch/async-api-generator/cmd/async-api-gen-doc.Version=${VERSION}\" -X \"github.com/dnitsch/async-api-generator/cmd/async-api-gen-doc.Revision={{.REVISION}}\" -extldflags -static"
@@ -103,7 +103,7 @@ tasks:
       vars:
         - PAT
         - GIT_TAG
-  tag: 
+  tag:
     desc: |
       Usage `task tag GIT_TAG=2111dsfsdfa REVISION=as2342432`
     cmd: |
