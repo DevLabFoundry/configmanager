@@ -67,7 +67,15 @@ jobs:
       - name: release library
         run: |
           task tag GIT_TAG=${SEMVER} REVISION=$GITHUB_SHA
-      - name: release binary
+      - name: build binary
         run: |
           task bin REVISION=$GITHUB_SHA GIT_TAG=${SEMVER}
-          task release REVISION=$GITHUB_SHA GIT_TAG=${SEMVER} PAT=${{ secrets.GITHUB_TOKEN }}
+      - name: Release binary
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.set-version.outputs.semVer }}
+          # TODO: add additional info to the release
+          generate_release_notes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: ./dist/*
+          prerelease: false
