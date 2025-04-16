@@ -35,7 +35,7 @@ tasks:
     cmds:
       - |
         set -exo pipefail
-        go test ./... -v -buildvcs=false -mod=readonly -race -coverprofile=.coverage/out > .coverage/unit ; cat .coverage/unit
+        go test ./... -v -buildvcs=false -mod=readonly -race -coverprofile=.coverage/out | tee .coverage/unit
 
   install:
     desc: Install dependencies
