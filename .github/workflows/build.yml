@@ -63,6 +63,7 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.email ${{ github.actor }}-ci@gha.org
           git config user.name ${{ github.actor }}
+
       - name: Run Lint
         run: |
           task lint
