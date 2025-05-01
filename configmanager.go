@@ -78,7 +78,7 @@ func (c *ConfigManager) RetrieveWithInputReplaced(input string) (string, error) 
 	// NOTE: this happens before the FindTokens is called
 	// currently it uses a regex, and envsubst uses a more robust lexer => parser mechanism
 	//
-	// TODO: configmanager needs an own lexer => parser to allow for easier modification extension in the future
+	// NOTE: configmanager needs an own lexer => parser to allow for easier modification extension in the future
 	if c.GeneratorConfig().EnvSubstEnabled() {
 		var err error
 		input, err = envsubst.StringRestrictedNoDigit(input, true, true, false)

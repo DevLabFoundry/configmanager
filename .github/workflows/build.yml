@@ -70,6 +70,8 @@ jobs:
       - name: Run Tests
         run: |
           task coverage
+          ls -alt /github/workspace/.coverage/out
+          ls -lat /github/workspace/.coverage/report-junit.xml
       - name: Publish Junit style Test Report
         uses: mikepenz/action-junit-report@v4
         if: always() # always run even if the previous step fails
@@ -84,8 +86,8 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   # Generate a token on Sonarcloud.io, add it to the secrets of this repo with the name SONAR_TOKEN (Settings > Secrets > Actions > add new repository secret)
         with:
           # Additional arguments for the sonarcloud scanner
-          args:
             # mandatory
+          args: >
             -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }}
             -Dsonar.go.coverage.reportPaths=/github/workspace/.coverage/out
             -Dsonar.go.tests.reportPaths=/github/workspace/.coverage/report-junit.xml
