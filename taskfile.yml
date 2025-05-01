@@ -35,7 +35,7 @@ tasks:
     cmds:
       - |
         set -exo pipefail
-        go test ./... -v -buildvcs=false -mod=readonly -race -coverprofile=.coverage/out | tee .coverage/unit
+        go test ./... -v -buildvcs=false -mod=readonly -race -coverpkg=./... -coverprofile=.coverage/out | tee .coverage/unit
 
   install:
     desc: Install dependencies
@@ -90,8 +90,10 @@ tasks:
       - for: { var: GO_ARCHS, as: GO_TARGET_ARCH }
         cmd: |
           GOOS={{.GO_TARGET_ARCH}} GOARCH=arm64 CGO_ENABLED=0 go build -mod=readonly -buildvcs=false {{.LDFLAGS}} -o ./dist/configmanager-{{.GO_TARGET_ARCH}}-arm64 ./cmd
+      - for: { var: GO_ARCHS, as: GO_TARGET_ARCH }
+        cmd: |
+          GOOS={{.GO_TARGET_ARCH}} GOARCH=amd64 CGO_ENABLED=0 go build -mod=readonly -buildvcs=false {{.LDFLAGS}} -o ./dist/configmanager-{{.GO_TARGET_ARCH}}-amd64 ./cmd
     vars:
-      # LDFLAGS: -ldflags="-s -w -X \"github.com/dnitsch/async-api-generator/cmd/async-api-gen-doc.Version=${VERSION}\" -X \"github.com/dnitsch/async-api-generator/cmd/async-api-gen-doc.Revision={{.REVISION}}\" -extldflags -static"
       LDFLAGS: -ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/cmd/configmanager.Revision={{.REVISION}}\" -extldflags -static"
       GO_ARCHS: darwin windows linux
 

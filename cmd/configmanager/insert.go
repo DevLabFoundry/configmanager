@@ -20,7 +20,6 @@ func newInsertCmd(rootCmd *Root) {
 		Long:    ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("not yet implemented")
-
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if len(f.insertKv) < 1 {

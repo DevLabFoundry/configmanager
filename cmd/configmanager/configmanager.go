@@ -22,6 +22,7 @@ type rootCmdFlags struct {
 	verbose        bool
 	tokenSeparator string
 	keySeparator   string
+	enableEnvSubst bool
 }
 
 type Root struct {
@@ -47,6 +48,7 @@ func NewRootCmd(logger log.ILogger) *Root { //channelOut, channelErr io.Writer
 	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.verbose, "verbose", "v", false, "Verbosity level")
 	rc.Cmd.PersistentFlags().StringVarP(&rc.rootFlags.tokenSeparator, "token-separator", "s", "#", "Separator to use to mark concrete store and the key within it")
 	rc.Cmd.PersistentFlags().StringVarP(&rc.rootFlags.keySeparator, "key-separator", "k", "|", "Separator to use to mark a key look up in a map. e.g. AWSSECRETS#/token/map|key1")
+	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.enableEnvSubst, "enable-envsubst", "e", false, "Enable envsubst on input. This will fail on any unset or empty variables")
 	addSubCmds(rc)
 	return rc
 }
@@ -70,7 +72,7 @@ func cmdutilsInit(rootCmd *Root, cmd *cobra.Command, path string) (*cmdutils.Cmd
 	}
 
 	cm := configmanager.New(cmd.Context())
-	cm.Config.WithTokenSeparator(rootCmd.rootFlags.tokenSeparator).WithOutputPath(path).WithKeySeparator(rootCmd.rootFlags.keySeparator)
+	cm.Config.WithTokenSeparator(rootCmd.rootFlags.tokenSeparator).WithOutputPath(path).WithKeySeparator(rootCmd.rootFlags.keySeparator).WithEnvSubst(rootCmd.rootFlags.enableEnvSubst)
 	gnrtr := generator.NewGenerator(cmd.Context(), func(gv *generator.GenVars) {
 		if rootCmd.rootFlags.verbose {
 			rootCmd.logger.SetLevel(log.DebugLvl)

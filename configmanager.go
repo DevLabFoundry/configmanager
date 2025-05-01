@@ -3,6 +3,7 @@ package configmanager
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/DevLabFoundry/configmanager/internal/config"
 	"github.com/DevLabFoundry/configmanager/pkg/generator"
+	"github.com/a8m/envsubst"
 	"gopkg.in/yaml.v3"
 )
 
@@ -66,10 +68,24 @@ func (c *ConfigManager) retrieve(tokens []string) (generator.ParsedMap, error) {
 	return c.generator.Generate(tokens)
 }
 
+var ErrEnvSubst = errors.New("envsubst enabled and errored on")
+
 // RetrieveWithInputReplaced parses given input against all possible token strings
 // using regex to grab a list of found tokens in the given string and returns the replaced string
 func (c *ConfigManager) RetrieveWithInputReplaced(input string) (string, error) {
-
+	// replaces all env vars using strict mode of no unset and no empty
+	//
+	// NOTE: this happens before the FindTokens is called
+	// currently it uses a regex, and envsubst uses a more robust lexer => parser mechanism
+	//
+	// TODO: configmanager needs an own lexer => parser to allow for easier modification extension in the future
+	if c.GeneratorConfig().EnvSubstEnabled() {
+		var err error
+		input, err = envsubst.StringRestrictedNoDigit(input, true, true, false)
+		if err != nil {
+			return "", fmt.Errorf("%w\n%v", ErrEnvSubst, err)
+		}
+	}
 	m, err := c.retrieve(FindTokens(input))
 
 	if err != nil {
