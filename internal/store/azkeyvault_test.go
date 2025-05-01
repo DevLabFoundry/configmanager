@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
-	"github.com/DevLabFoundry/configmanager/internal/config"
-	"github.com/DevLabFoundry/configmanager/internal/testutils"
-	"github.com/DevLabFoundry/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/v2/pkg/log"
 )
 
 func Test_azSplitToken(t *testing.T) {

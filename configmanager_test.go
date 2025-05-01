@@ -8,10 +8,10 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager"
-	"github.com/DevLabFoundry/configmanager/internal/config"
-	"github.com/DevLabFoundry/configmanager/internal/testutils"
-	"github.com/DevLabFoundry/configmanager/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/v2"
+	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
 	"github.com/go-test/deep"
 )
 

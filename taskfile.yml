@@ -69,7 +69,7 @@ tasks:
       internal/private package documentation
     cmd: |
       go install golang.org/x/tools/cmd/godoc@latest
-      open http://localhost:6060/pkg/github.com/DevLabFoundry/configmanager/?m=all
+      open http://localhost:6060/pkg/github.com/DevLabFoundry/configmanager/v2/?m=all
       godoc -notes "BUG|TODO" -play -http=:6060
 
   bin:
@@ -94,7 +94,7 @@ tasks:
         cmd: |
           GOOS={{.GO_TARGET_ARCH}} GOARCH=amd64 CGO_ENABLED=0 go build -mod=readonly -buildvcs=false {{.LDFLAGS}} -o ./dist/configmanager-{{.GO_TARGET_ARCH}}-amd64 ./cmd
     vars:
-      LDFLAGS: -ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/cmd/configmanager.Revision={{.REVISION}}\" -extldflags -static"
+      LDFLAGS: -ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Revision={{.REVISION}}\" -extldflags -static"
       GO_ARCHS: darwin windows linux
 
   tag:

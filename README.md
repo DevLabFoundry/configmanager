@@ -1,7 +1,7 @@
 # Config Manager
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/DevLabFoundry/configmanager.svg)](https://pkg.go.dev/github.com/DevLabFoundry/configmanager)
-[![Go Report Card](https://goreportcard.com/badge/github.com/DevLabFoundry/configmanager)](https://goreportcard.com/report/github.com/DevLabFoundry/configmanager)
+[![Go Reference](https://pkg.go.dev/badge/github.com/DevLabFoundry/configmanager/v2.svg)](https://pkg.go.dev/github.com/DevLabFoundry/configmanager/v2)
+[![Go Report Card](https://goreportcard.com/badge/github.com/DevLabFoundry/configmanager/v2)](https://goreportcard.com/report/github.com/DevLabFoundry/configmanager/v2)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=dnitsch_configmanager&metric=bugs)](https://sonarcloud.io/summary/new_code?id=dnitsch_configmanager)
 [![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=dnitsch_configmanager&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=dnitsch_configmanager)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=dnitsch_configmanager&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=dnitsch_configmanager)
@@ -230,7 +230,7 @@ when using Vault in AWS - you can set the value of the `VAULT_TOKEN=aws_iam` thi
 
 The Hashicorp Vault functions in the same exact way as the other implementations. It will retrieve the JSON object and can be looked up within it by using a key separator.
 
-## [Go API](https://pkg.go.dev/github.com/DevLabFoundry/configmanager)
+## [Go API](https://pkg.go.dev/github.com/DevLabFoundry/configmanager/v2)
 
 ## [Examples](docs/examples.md)
 

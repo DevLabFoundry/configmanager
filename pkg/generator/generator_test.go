@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/internal/config"
-	"github.com/DevLabFoundry/configmanager/internal/store"
-	"github.com/DevLabFoundry/configmanager/internal/strategy"
-	"github.com/DevLabFoundry/configmanager/internal/testutils"
-	"github.com/DevLabFoundry/configmanager/pkg/generator"
-	"github.com/DevLabFoundry/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/store"
+	"github.com/DevLabFoundry/configmanager/v2/internal/strategy"
+	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/v2/pkg/log"
 )
 
 type mockGenerate struct {
@@ -177,7 +177,7 @@ func Test_IsParsed(t *testing.T) {
 // 	"strings"
 // 	"testing"
 
-// 	"github.com/DevLabFoundry/configmanager/internal/testutils"
+// 	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
 // )
 
 // var (

@@ -3,7 +3,7 @@ package store_test
 import (
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/internal/store"
+	"github.com/DevLabFoundry/configmanager/v2/internal/store"
 )
 
 func Test_StoreDefault(t *testing.T) {
