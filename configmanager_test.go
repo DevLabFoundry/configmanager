@@ -3,6 +3,7 @@ package configmanager_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"sort"
 	"testing"
@@ -158,6 +159,45 @@ foo23 = val1
 		t.Run(tt.name, func(t *testing.T) {
 			cm := configmanager.New(context.TODO())
 			cm.WithGenerator(tt.genvar)
+			got, err := cm.RetrieveWithInputReplaced(tt.input)
+			if err != nil {
+				t.Errorf("failed with %v", err)
+			}
+			if got != tt.expect {
+				t.Errorf(testutils.TestPhrase, got, tt.expect)
+			}
+		})
+	}
+}
+
+func Test_replaceString_with_envsubst(t *testing.T) {
+	t.Parallel()
+	ttests := map[string]struct {
+		expect string
+		setup  func() func()
+		input  string
+		genvar *mockGenerator
+	}{
+		"replaced successfully": {
+			input:  `{"patchPayloadTemplate":"{"password":"FOO#/${BAR}","passwordConfirm":"FOO#/${BAZ:-test}"}}`,
+			expect: `{"patchPayloadTemplate":"{"password":"val1","passwordConfirm":"val1"}}`,
+			genvar: &mockGenerator{},
+			setup: func() func() {
+				os.Setenv("BAR", "test")
+				return func() {
+					os.Unsetenv("BAR")
+				}
+			},
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			tearDown := tt.setup()
+			defer tearDown()
+
+			cm := configmanager.New(context.TODO())
+			cm.WithGenerator(tt.genvar)
+			cm.Config.WithEnvSubst(true)
 			got, err := cm.RetrieveWithInputReplaced(tt.input)
 			if err != nil {
 				t.Errorf("failed with %v", err)
@@ -583,7 +623,7 @@ func Test_Generator_Config_(t *testing.T) {
 			}
 			got := cm.GeneratorConfig()
 			if diff := deep.Equal(got, &tt.expect); diff != nil {
-				t.Errorf(testutils.TestPhraseWithContext, "generator config", fmt.Sprintf("%q", got), fmt.Sprintf("%q", tt.expect))
+				t.Errorf(testutils.TestPhraseWithContext, "generator config", fmt.Sprintf("%v", got), fmt.Sprintf("%v", tt.expect))
 			}
 		})
 	}

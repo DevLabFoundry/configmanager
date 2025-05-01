@@ -41,7 +41,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     container:
-      image: golang:1.23-bullseye
+      image: golang:1.24-bookworm
       env:
         FOO: Bar
     needs: set-version
@@ -73,7 +73,7 @@ jobs:
       - name: Release binary
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.set-version.outputs.semVer }}
+          tag_name: v${{ needs.set-version.outputs.semVer }}
           # TODO: add additional info to the release
           generate_release_notes: true
           token: ${{ secrets.GITHUB_TOKEN }}
