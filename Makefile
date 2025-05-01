@@ -1,5 +1,5 @@
 
-OWNER := dnitsch
+OWNER := DevLabFoundry
 NAME := configmanager
 GIT_TAG := "1.18.0"
 VERSION := "v$(GIT_TAG)"
@@ -10,9 +10,9 @@ LDFLAGS := -ldflags="-s -w -X \"github.com/$(OWNER)/$(NAME)/cmd/configmanager.Ve
 .PHONY: test test_ci tidy install cross-build 
 
 test: test_prereq
-	go test `go list ./... | grep -v */generated/` -v -buildvcs=false -mod=readonly -coverprofile=.coverage/out ; \
+	go test `go list ./... | grep -v */generated/` -v -buildvcs=false -mod=readonly -coverpkg=./... -coverprofile=.coverage/test.out | tee .coverage/out ; \
 	cat .coverage/out | go-junit-report > .coverage/report-junit.xml && \
-	gocov convert .coverage/out | gocov-xml > .coverage/report-cobertura.xml
+	gocov convert .coverage/test.out | gocov-xml > .coverage/report-cobertura.xml
 
 test_ci:
 	go test ./... -mod=readonly
@@ -55,4 +55,4 @@ tag:
 tagbuildrelease: tag cross-build release
 
 show_coverage: test
-	go tool cover -html=.coverage/out
+	go tool cover -html=.coverage/test.out

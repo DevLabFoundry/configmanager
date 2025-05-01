@@ -22,6 +22,7 @@ type GenVarsConfig struct {
 	outpath        string
 	tokenSeparator string
 	keySeparator   string
+	enableEnvSubst bool
 	// parseAdditionalVars func(token string) TokenConfigVars
 }
 
@@ -53,6 +54,12 @@ func (c *GenVarsConfig) WithKeySeparator(keySeparator string) *GenVarsConfig {
 	return c
 }
 
+// WithKeySeparator adds a custom key separotor
+func (c *GenVarsConfig) WithEnvSubst(enabled bool) *GenVarsConfig {
+	c.enableEnvSubst = enabled
+	return c
+}
+
 // OutputPath returns the outpath set in the config
 func (c *GenVarsConfig) OutputPath() string {
 	return c.outpath
@@ -66,6 +73,11 @@ func (c *GenVarsConfig) TokenSeparator() string {
 // KeySeparator returns the keySeparator set in the config
 func (c *GenVarsConfig) KeySeparator() string {
 	return c.keySeparator
+}
+
+// EnvSubstEnabled returns whether or not envsubst is enabled
+func (c *GenVarsConfig) EnvSubstEnabled() bool {
+	return c.enableEnvSubst
 }
 
 func (c GenVarsConfig) ParseTokenVars(token string) TokenConfigVars {

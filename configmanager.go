@@ -9,6 +9,7 @@ import (
 
 	yaml "gopkg.in/yaml.v3"
 
+	"github.com/a8m/envsubst"
 	"github.com/dnitsch/configmanager/pkg/generator"
 )
 
@@ -28,6 +29,7 @@ func (c *ConfigManager) Retrieve(tokens []string, config generator.GenVarsConfig
 // GenerateAPI
 type GenerateAPI interface {
 	Generate(tokens []string) (generator.ParsedMap, error)
+	Config() *generator.GenVarsConfig
 }
 
 func retrieve(tokens []string, gv GenerateAPI) (generator.ParsedMap, error) {
@@ -42,9 +44,20 @@ func (c *ConfigManager) RetrieveWithInputReplaced(input string, config generator
 }
 
 func retrieveWithInputReplaced(input string, gv GenerateAPI) (string, error) {
-
+	// replaces all env vars using strict mode of no unset and no empty
+	//
+	// NOTE: this happens before the FindTokens is called
+	// currently it uses a regex, and envsubst uses a more robust lexer => parser mechanism
+	//
+	// TODO: configmanager needs an own lexer => parser to allow for easier modification extension in the future
+	if gv.Config().EnvSubstEnabled() {
+		var err error
+		input, err = envsubst.StringRestrictedNoDigit(input, true, true, false)
+		if err != nil {
+			return "", err
+		}
+	}
 	m, err := retrieve(FindTokens(input), gv)
-
 	if err != nil {
 		return "", err
 	}

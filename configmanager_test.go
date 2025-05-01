@@ -3,6 +3,7 @@ package configmanager
 import (
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 	"sort"
 	"testing"
@@ -17,7 +18,9 @@ type mockConfigManageriface interface {
 	Insert(force bool) error
 }
 
-type mockGenVars struct{}
+type mockGenVars struct {
+	config func() *generator.GenVarsConfig
+}
 
 var (
 	testKey = "FOO#/test"
@@ -28,6 +31,13 @@ func (m *mockGenVars) Generate(tokens []string) (generator.ParsedMap, error) {
 	pm := generator.ParsedMap{}
 	pm[testKey] = testVal
 	return pm, nil
+}
+
+func (m *mockGenVars) Config() *generator.GenVarsConfig {
+	if m.config != nil {
+		return m.config()
+	}
+	return generator.NewConfig()
 }
 
 func (m *mockGenVars) ConvertToExportVar() []string {
@@ -46,7 +56,7 @@ func Test_retrieve(t *testing.T) {
 	tests := []struct {
 		name      string
 		tokens    []string
-		genvar    generator.Generatoriface
+		genvar    generator.GenVarsiface
 		expectKey string
 		expectVal string
 	}{
@@ -80,7 +90,7 @@ func Test_retrieveWithInputReplaced(t *testing.T) {
 	tests := map[string]struct {
 		name   string
 		input  string
-		genvar generator.Generatoriface
+		genvar *mockGenVars
 		expect string
 	}{
 		"strYaml": {
@@ -174,6 +184,44 @@ foo23 = val1
 			}
 			if got != tt.expect {
 				t.Errorf(testutils.TestPhrase, got, tt.expect)
+			}
+		})
+	}
+}
+
+func Test_replaceString_with_envsubst(t *testing.T) {
+	t.Parallel()
+	ttests := map[string]struct {
+		want   string
+		setup  func() func()
+		input  string
+		genvar *mockGenVars
+	}{
+		"replaced successfully": {
+			input: `{"patchPayloadTemplate":"{"password":"FOO#/${BAR}","passwordConfirm":"FOO#/${BAZ:-test}"}}`,
+			want:  `{"patchPayloadTemplate":"{"password":"val1","passwordConfirm":"val1"}}`,
+			genvar: &mockGenVars{config: func() *generator.GenVarsConfig {
+				return generator.NewConfig().WithEnvSubst(true)
+			}},
+			setup: func() func() {
+				os.Setenv("BAR", "test")
+				return func() {
+					os.Unsetenv("BAR")
+				}
+			},
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			tearDown := tt.setup()
+			defer tearDown()
+
+			got, err := retrieveWithInputReplaced(tt.input, tt.genvar)
+			if err != nil {
+				t.Errorf("failed with %v", err)
+			}
+			if got != tt.want {
+				t.Errorf(testutils.TestPhrase, got, tt.want)
 			}
 		})
 	}
@@ -620,6 +668,17 @@ func TestFindTokens(t *testing.T) {
 				"AZKVSECRET:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
 				"VAULT:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[]"},
 		},
+		// "EnvSubst with bash var": {
+		// 	`param: AWSPARAMSTR:///${FOO:-bar}
+		// 	secretsmgr: AWSSECRETS#bar/${FOO:-bar}[version:123]
+		// 	gcp: GCPSECRETS://${FOO:-'bar'}
+		// 	gcp: GCPSECRETS://${FOO:-"bar"}`,
+		// 	[]string{
+		// 		"AWSPARAMSTR:///${FOO:-bar}",
+		// 		"AWSSECRETS#bar/${FOO:-bar}[version:123]",
+		// 		"GCPSECRETS://${FOO:-'bar'}",
+		// 		`GCPSECRETS://${FOO:-"bar"}`},
+		// },
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
