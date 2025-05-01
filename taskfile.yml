@@ -97,17 +97,6 @@ tasks:
       LDFLAGS: -ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/cmd/configmanager.Revision={{.REVISION}}\" -extldflags -static"
       GO_ARCHS: darwin windows linux
 
-  release:
-    desc: |
-      Usafe task release PAT=foo GIT_TAG=1.2.2
-    cmd: |
-      OWNER=${OWNER} NAME=${NAME} PAT={{.PAT}} VERSION=${VERSION} . hack/release.sh
-    # vars:
-      # PAT: ${PAT}
-    requires:
-      vars:
-        - PAT
-        - GIT_TAG
   tag:
     desc: |
       Usage `task tag GIT_TAG=2111dsfsdfa REVISION=as2342432`
