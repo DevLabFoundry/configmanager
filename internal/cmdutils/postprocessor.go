@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/DevLabFoundry/configmanager/internal/config"
-	"github.com/DevLabFoundry/configmanager/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
 )
 
 // PostProcessor

@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	gcpsecretspb "cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
-	"github.com/DevLabFoundry/configmanager/internal/config"
-	"github.com/DevLabFoundry/configmanager/internal/testutils"
-	"github.com/DevLabFoundry/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/v2/pkg/log"
 	"github.com/googleapis/gax-go/v2"
 )
 

@@ -84,8 +84,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/DevLabFoundry/configmanager/pkg/generator"
-	"github.com/DevLabFoundry/configmanager"
+	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/v2"
 )
 
 func main() {
@@ -128,8 +128,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/DevLabFoundry/configmanager"
-	"github.com/DevLabFoundry/configmanager/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/v2"
+	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
 )
 
 var (

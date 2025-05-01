@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/DevLabFoundry/configmanager"
+	"github.com/DevLabFoundry/configmanager/v2"
 )
 
 const DO_STUFF_WITH_VALS_HERE = "connstring:user@%v:host=%s/someschema..."
