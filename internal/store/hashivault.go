@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/pkg/log"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
 
 	vault "github.com/hashicorp/vault/api"
 	auth "github.com/hashicorp/vault/api/auth/aws"

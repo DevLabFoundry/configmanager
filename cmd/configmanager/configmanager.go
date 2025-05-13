@@ -8,8 +8,8 @@ import (
 	"github.com/DevLabFoundry/configmanager/v2"
 	"github.com/DevLabFoundry/configmanager/v2/internal/cmdutils"
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
 	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
-	"github.com/DevLabFoundry/configmanager/v2/pkg/log"
 	"github.com/spf13/cobra"
 )
 

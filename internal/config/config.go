@@ -171,7 +171,7 @@ func (t *ParsedTokenConfig) ParseMetadata(typ any) error {
 	// extracted from the token there is little chance panic would occur here
 	// WATCH THIS SPACE "¯\_(ツ)_/¯"
 	metaMap := []string{}
-	for _, keyVal := range strings.Split(t.metadataStr, ",") {
+	for keyVal := range strings.SplitSeq(t.metadataStr, ",") {
 		mapKeyVal := strings.Split(keyVal, "=")
 		if len(mapKeyVal) == 2 {
 			metaMap = append(metaMap, fmt.Sprintf(`"%s":"%s"`, mapKeyVal[0], mapKeyVal[1]))

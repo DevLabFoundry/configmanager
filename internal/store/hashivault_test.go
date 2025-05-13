@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
 	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
-	"github.com/DevLabFoundry/configmanager/v2/pkg/log"
 	vault "github.com/hashicorp/vault/api"
 )
 

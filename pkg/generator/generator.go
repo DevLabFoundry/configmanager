@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
 	"github.com/DevLabFoundry/configmanager/v2/internal/store"
 	"github.com/DevLabFoundry/configmanager/v2/internal/strategy"
-	"github.com/DevLabFoundry/configmanager/v2/pkg/log"
 	"github.com/spyzhov/ajson"
 )
 
@@ -55,7 +55,7 @@ func newGenVars(ctx context.Context, opts ...Opts) *GenVars {
 		Logger: log.New(io.Discard),
 		rawMap: tokenMapSafe{
 			tokenMap: m,
-			mu:       sync.RWMutex{},
+			mu:       &sync.Mutex{},
 		},
 		ctx: ctx,
 		// return using default config
@@ -112,7 +112,7 @@ func (pm ParsedMap) MapKeys() (keys []string) {
 }
 
 type tokenMapSafe struct {
-	mu       sync.RWMutex
+	mu       *sync.Mutex
 	tokenMap ParsedMap
 }
 
@@ -217,7 +217,7 @@ func (c *GenVars) generate(rawMap rawTokenMap) error {
 // map[string]string
 // If found it will convert that to a map with all keys uppercased
 // and any characters
-func IsParsed(v any, trm *ParsedMap) bool {
+func IsParsed(v any, trm ParsedMap) bool {
 	str := fmt.Sprint(v)
 	err := json.Unmarshal([]byte(str), &trm)
 	return err == nil

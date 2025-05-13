@@ -24,8 +24,8 @@ func (p *PostProcessor) ConvertToExportVar() []string {
 	for k, v := range p.ProcessedMap {
 		rawKeyToken := strings.Split(k, "/") // assumes a path like token was used
 		topLevelKey := rawKeyToken[len(rawKeyToken)-1]
-		trm := make(generator.ParsedMap)
-		if parsedOk := generator.IsParsed(v, &trm); parsedOk {
+		trm := generator.ParsedMap{}
+		if parsedOk := generator.IsParsed(v, trm); parsedOk {
 			// if is a map
 			// try look up on key if separator defined
 			normMap := p.envVarNormalize(trm)
