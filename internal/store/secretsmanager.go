@@ -6,7 +6,7 @@ import (
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
 	"github.com/DevLabFoundry/configmanager/v2/internal/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awsConf "github.com/aws/aws-sdk-go-v2/config"
+	awsconf "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 )
 
@@ -27,7 +27,7 @@ type SecretsMgrConfig struct {
 }
 
 func NewSecretsMgr(ctx context.Context, logger log.ILogger) (*SecretsMgr, error) {
-	cfg, err := awsConf.LoadDefaultConfig(ctx)
+	cfg, err := awsconf.LoadDefaultConfig(ctx)
 	if err != nil {
 		logger.Error("unable to load SDK config, %v\n%w", err, ErrClientInitialization)
 		return nil, err
@@ -44,14 +44,16 @@ func NewSecretsMgr(ctx context.Context, logger log.ILogger) (*SecretsMgr, error)
 
 func (imp *SecretsMgr) SetToken(token *config.ParsedTokenConfig) {
 	storeConf := &SecretsMgrConfig{}
-	token.ParseMetadata(storeConf)
+	if err := token.ParseMetadata(storeConf); err != nil {
+		imp.logger.Error("parse token error %v", err)
+	}
 	imp.token = token
 	imp.config = storeConf
 }
 
 func (imp *SecretsMgr) Token() (string, error) {
 	imp.logger.Info("Concrete implementation SecretsManager")
-	imp.logger.Info("SecretsManager Token: %s", imp.token.String())
+	imp.logger.Debug("SecretsManager Token: %s", imp.token.String())
 
 	version := "AWSCURRENT"
 	if imp.config.Version != "" {

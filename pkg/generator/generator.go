@@ -131,26 +131,45 @@ func (tms *tokenMapSafe) addKeyVal(key *config.ParsedTokenConfig, val string) {
 	tms.tokenMap[key.String()] = keySeparatorLookup(key, val)
 }
 
-type rawTokenMap map[string]*config.ParsedTokenConfig
+type rawTokenMap struct {
+	mu       sync.Mutex
+	tokenMap map[string]*config.ParsedTokenConfig
+}
+
+func newRawTokenMap() *rawTokenMap {
+	return &rawTokenMap{mu: sync.Mutex{}, tokenMap: map[string]*config.ParsedTokenConfig{}}
+}
+
+func (rtm *rawTokenMap) addToken(name string, parsedToken *config.ParsedTokenConfig) {
+	rtm.mu.Lock()
+	defer rtm.mu.Unlock()
+	rtm.tokenMap[name] = parsedToken
+}
+
+func (rtm *rawTokenMap) mapOfToken() map[string]*config.ParsedTokenConfig {
+	rtm.mu.Lock()
+	defer rtm.mu.Unlock()
+	return rtm.tokenMap
+}
 
 // Generate generates a k/v map of the tokens with their corresponding secret/paramstore values
 // the standard pattern of a token should follow a path like string
 func (c *GenVars) Generate(tokens []string) (ParsedMap, error) {
 
-	parsedTokenMap := make(rawTokenMap)
+	rtm := newRawTokenMap()
 	for _, token := range tokens {
 		// TODO: normalize tokens here potentially
 		// merge any tokens that only differ in keys lookup inside the object
 		parsedToken, err := config.NewParsedTokenConfig(token, c.config)
-		if err == nil {
-			parsedTokenMap[token] = parsedToken
+		if err != nil {
+			c.Logger.Info(err.Error())
 			continue
 		}
-		c.Logger.Info(err.Error())
+		rtm.addToken(token, parsedToken)
 	}
 	// pass in default initialised retrieveStrategy
 	// input should be
-	if err := c.generate(parsedTokenMap); err != nil {
+	if err := c.generate(rtm); err != nil {
 		return nil, err
 	}
 	return c.rawMap.getTokenMap(), nil
@@ -160,55 +179,50 @@ func (c *GenVars) Generate(tokens []string) (ParsedMap, error) {
 // initiates groutines with fixed size channel map
 // to capture responses and errors
 // generates ParsedMap which includes
-func (c *GenVars) generate(rawMap rawTokenMap) error {
-	if len(rawMap) < 1 {
-		c.Logger.Debug("no replaceable tokens found in input strings")
+func (c *GenVars) generate(rawMap *rawTokenMap) error {
+	rtm := rawMap.mapOfToken()
+	if len(rtm) < 1 {
+		c.Logger.Debug("no replaceable tokens found in input")
 		return nil
 	}
 
-	var errors []error
-	// build an exact size channel
-	var wg sync.WaitGroup
-	initChanLen := len(rawMap)
-	outCh := make(chan *strategy.TokenResponse, initChanLen)
+	tokenCount := len(rtm)
+	outCh := make(chan *strategy.TokenResponse, tokenCount)
 
-	wg.Add(initChanLen)
 	// TODO: initialise the singleton serviceContainer
 	// pass into each goroutine
-	for _, parsedToken := range rawMap {
+	for _, parsedToken := range rtm {
+		token := parsedToken // safe closure capture
 		// take value from config allocation on a per iteration basis
-		go func(token *config.ParsedTokenConfig) {
-			defer wg.Done()
+		go func() {
 			storeStrategy, err := c.strategy.SelectImplementation(c.ctx, token)
 			if err != nil {
 				outCh <- &strategy.TokenResponse{Err: err}
 				return
 			}
 			outCh <- c.strategy.RetrieveByToken(c.ctx, storeStrategy, token)
-		}(parsedToken)
+		}()
 	}
 
-	go func() {
-		wg.Wait()
-		close(outCh)
-	}()
-
-	for cro := range outCh {
-		cr := cro
-		c.Logger.Debug("cro: %+v", cr)
-		if cr.Err != nil {
-			c.Logger.Debug("cr.err %v, for token: %s", cr.Err, cr.Key())
-			errors = append(errors, cr.Err)
-			// Skip adding not found key to the RawMap
-			continue
+	// Fan-in: receive results with pure select
+	received := 0
+	for received < tokenCount {
+		select {
+		case cr := <-outCh:
+			if cr == nil {
+				continue // defensive (shouldn't happen)
+			}
+			c.Logger.Debug("cro: %+v", cr)
+			if cr.Err != nil {
+				c.Logger.Debug("cr.err %v, for token: %s", cr.Err, cr.Key())
+			} else {
+				c.rawMap.addKeyVal(cr.Key(), cr.Value())
+			}
+			received++
+		case <-c.ctx.Done():
+			c.Logger.Debug("context done: %v", c.ctx.Err())
+			return c.ctx.Err() // propagate context error (cancel/timeout)
 		}
-		c.rawMap.addKeyVal(cr.Key(), cr.Value())
-	}
-
-	if len(errors) > 0 {
-		// crude ...
-		c.Logger.Debug("found: %d errors", len(errors))
-		// return outMap, fmt.Errorf("%v", errors)
 	}
 	return nil
 }
