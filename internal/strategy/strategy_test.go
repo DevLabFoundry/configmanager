@@ -125,48 +125,48 @@ func Test_SelectImpl_With(t *testing.T) {
 		expect        func() store.Strategy
 		expErr        error
 	}{
-		// "unknown": {
-		// 	func() func() {
-		// 		return func() {
-		// 		}
-		// 	},
-		// 	"UNKNOWN#foo/bar",
-		// 	config.NewConfig().WithTokenSeparator("#"),
-		// 	func() store.Strategy { return nil },
-		// 	fmt.Errorf("implementation not found for input string: UNKNOWN#foo/bar"),
-		// },
-		// "success AZTABLESTORE": {
-		// 	func() func() {
-		// 		os.Setenv("AZURE_stuff", "foo")
-		// 		return func() {
-		// 			os.Clearenv()
-		// 		}
-		// 	},
-		// 	"AZTABLESTORE#foo/bar1",
-		// 	config.NewConfig().WithTokenSeparator("#"),
-		// 	func() store.Strategy {
-		// 		token, _ := config.NewParsedTokenConfig("AZTABLESTORE#foo/bar1", *config.NewConfig().WithTokenSeparator("#"))
-		// 		s, _ := store.NewAzTableStore(context.TODO(), token, log.New(io.Discard))
-		// 		return s
-		// 	},
-		// 	nil,
-		// },
-		// "success AWSPARAMSTR": {
-		// 	func() func() {
-		// 		os.Setenv("AWS_ACCESS_KEY", "AAAAAAAAAAAAAAA")
-		// 		os.Setenv("AWS_SECRET_ACCESS_KEY", "00000000000000000000111111111")
-		// 		return func() {
-		// 			os.Clearenv()
-		// 		}
-		// 	},
-		// 	"AWSPARAMSTR#foo/bar1",
-		// 	config.NewConfig().WithTokenSeparator("#"),
-		// 	func() store.Strategy {
-		// 		s, _ := store.NewParamStore(context.TODO(), log.New(io.Discard))
-		// 		return s
-		// 	},
-		// 	nil,
-		// },
+		"unknown": {
+			func() func() {
+				return func() {
+				}
+			},
+			"UNKNOWN#foo/bar",
+			config.NewConfig().WithTokenSeparator("#"),
+			func() store.Strategy { return nil },
+			fmt.Errorf("implementation not found for input string: UNKNOWN#foo/bar"),
+		},
+		"success AZTABLESTORE": {
+			func() func() {
+				os.Setenv("AZURE_stuff", "foo")
+				return func() {
+					os.Clearenv()
+				}
+			},
+			"AZTABLESTORE#foo/bar1",
+			config.NewConfig().WithTokenSeparator("#"),
+			func() store.Strategy {
+				token, _ := config.NewParsedTokenConfig("AZTABLESTORE#foo/bar1", *config.NewConfig().WithTokenSeparator("#"))
+				s, _ := store.NewAzTableStore(context.TODO(), token, log.New(io.Discard))
+				return s
+			},
+			nil,
+		},
+		"success AWSPARAMSTR": {
+			func() func() {
+				os.Setenv("AWS_ACCESS_KEY", "AAAAAAAAAAAAAAA")
+				os.Setenv("AWS_SECRET_ACCESS_KEY", "00000000000000000000111111111")
+				return func() {
+					os.Clearenv()
+				}
+			},
+			"AWSPARAMSTR#foo/bar1",
+			config.NewConfig().WithTokenSeparator("#"),
+			func() store.Strategy {
+				s, _ := store.NewParamStore(context.TODO(), log.New(io.Discard))
+				return s
+			},
+			nil,
+		},
 		"success AWSSECRETS": {
 			func() func() {
 				os.Setenv("AWS_ACCESS_KEY", "AAAAAAAAAAAAAAA")
