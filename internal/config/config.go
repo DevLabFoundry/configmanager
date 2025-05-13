@@ -165,13 +165,13 @@ func (ptc *ParsedTokenConfig) new() *ParsedTokenConfig {
 	return ptc
 }
 
-func (t *ParsedTokenConfig) ParseMetadata(typ any) error {
+func (t *ParsedTokenConfig) ParseMetadata(metadataTyp any) error {
 	// crude json like builder from key/val tags
 	// since we are only ever dealing with a string input
 	// extracted from the token there is little chance panic would occur here
 	// WATCH THIS SPACE "¯\_(ツ)_/¯"
 	metaMap := []string{}
-	for _, keyVal := range strings.Split(t.metadataStr, ",") {
+	for keyVal := range strings.SplitSeq(t.metadataStr, ",") {
 		mapKeyVal := strings.Split(keyVal, "=")
 		if len(mapKeyVal) == 2 {
 			metaMap = append(metaMap, fmt.Sprintf(`"%s":"%s"`, mapKeyVal[0], mapKeyVal[1]))
@@ -180,8 +180,7 @@ func (t *ParsedTokenConfig) ParseMetadata(typ any) error {
 
 	// empty map will be parsed as `{}` still resulting in a valid json
 	// and successful unmarshalling but default value pointer struct
-	b := []byte(fmt.Sprintf(`{%s}`, strings.Join(metaMap, ",")))
-	if err := json.Unmarshal(b, typ); err != nil {
+	if err := json.Unmarshal(fmt.Appendf(nil, `{%s}`, strings.Join(metaMap, ",")), metadataTyp); err != nil {
 		// It would very hard to test this since
 		// we are forcing the key and value to be strings
 		// return non-filled pointer

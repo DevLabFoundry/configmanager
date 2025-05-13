@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
 	"github.com/DevLabFoundry/configmanager/v2/internal/store"
-	"github.com/DevLabFoundry/configmanager/v2/pkg/log"
 )
 
 var ErrTokenInvalid = errors.New("invalid token - cannot get prefix")

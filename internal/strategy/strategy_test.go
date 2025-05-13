@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	log "github.com/DevLabFoundry/configmanager/v2/internal/log"
 	"github.com/DevLabFoundry/configmanager/v2/internal/store"
 	"github.com/DevLabFoundry/configmanager/v2/internal/strategy"
 	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
-	log "github.com/DevLabFoundry/configmanager/v2/pkg/log"
 	"github.com/go-test/deep"
 )
 

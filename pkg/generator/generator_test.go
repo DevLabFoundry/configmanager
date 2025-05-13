@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
 	"github.com/DevLabFoundry/configmanager/v2/internal/store"
 	"github.com/DevLabFoundry/configmanager/v2/internal/strategy"
 	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
 	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
-	"github.com/DevLabFoundry/configmanager/v2/pkg/log"
 )
 
 type mockGenerate struct {
@@ -162,7 +162,7 @@ func Test_IsParsed(t *testing.T) {
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
-			typ := &generator.ParsedMap{}
+			typ := generator.ParsedMap{}
 			got := generator.IsParsed(tt.val, typ)
 			if got != tt.isParsed {
 				t.Errorf(testutils.TestPhraseWithContext, "unexpected IsParsed", got, tt.isParsed)

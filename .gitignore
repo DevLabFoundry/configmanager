@@ -13,4 +13,5 @@ dist
 # tests
 .coverage
 
-.ignore*
+# local testers and 
+local/

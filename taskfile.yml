@@ -67,8 +67,8 @@ tasks:
     summary: |
       Already filters the packages to this one and enables
       internal/private package documentation
+# go install golang.org/x/tools/cmd/godoc@latest
     cmd: |
-      go install golang.org/x/tools/cmd/godoc@latest
       open http://localhost:6060/pkg/github.com/DevLabFoundry/configmanager/v2/?m=all
       godoc -notes "BUG|TODO" -play -http=:6060
 
