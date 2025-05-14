@@ -1,9 +1,13 @@
+// Package strategy is a strategy pattern wrapper around the store implementations
+//
+// NOTE: this may be refactored out into the store package directly
 package strategy
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
 	"github.com/DevLabFoundry/configmanager/v2/internal/log"
@@ -44,20 +48,28 @@ func defaultStrategyFuncMap(logger log.ILogger) map[config.ImplementationPrefix]
 	}
 }
 
+type strategyFnMap struct {
+	mu      sync.Mutex
+	funcMap StrategyFuncMap
+}
 type RetrieveStrategy struct {
 	implementation  store.Strategy
 	config          config.GenVarsConfig
-	strategyFuncMap StrategyFuncMap
-	token           string
+	strategyFuncMap strategyFnMap
 }
+type Opts func(*RetrieveStrategy)
 
 // New
-func New(s store.Strategy, config config.GenVarsConfig, logger log.ILogger) *RetrieveStrategy {
+func New(config config.GenVarsConfig, logger log.ILogger, opts ...Opts) *RetrieveStrategy {
 	rs := &RetrieveStrategy{
-		implementation:  s,
 		config:          config,
-		strategyFuncMap: defaultStrategyFuncMap(logger),
+		strategyFuncMap: strategyFnMap{mu: sync.Mutex{}, funcMap: defaultStrategyFuncMap(logger)},
 	}
+	// overwrite or add any options/defaults set above
+	for _, o := range opts {
+		o(rs)
+	}
+
 	return rs
 }
 
@@ -65,11 +77,14 @@ func New(s store.Strategy, config config.GenVarsConfig, logger log.ILogger) *Ret
 //
 // Mainly used for testing
 // NOTE: this may lead to eventual optional configurations by users
-func (rs *RetrieveStrategy) WithStrategyFuncMap(funcMap StrategyFuncMap) *RetrieveStrategy {
-	for prefix, implementation := range funcMap {
-		rs.strategyFuncMap[config.ImplementationPrefix(prefix)] = implementation
+func WithStrategyFuncMap(funcMap StrategyFuncMap) Opts {
+	return func(rs *RetrieveStrategy) {
+		for prefix, implementation := range funcMap {
+			rs.strategyFuncMap.mu.Lock()
+			defer rs.strategyFuncMap.mu.Unlock()
+			rs.strategyFuncMap.funcMap[config.ImplementationPrefix(prefix)] = implementation
+		}
 	}
-	return rs
 }
 
 func (rs *RetrieveStrategy) setImplementation(strategy store.Strategy) {
@@ -120,7 +135,7 @@ func (rs *RetrieveStrategy) SelectImplementation(ctx context.Context, token *con
 		return nil, fmt.Errorf("unable to get prefix, %w", ErrTokenInvalid)
 	}
 
-	if store, found := rs.strategyFuncMap[token.Prefix()]; found {
+	if store, found := rs.strategyFuncMap.funcMap[token.Prefix()]; found {
 		return store(ctx, token)
 	}
 

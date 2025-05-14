@@ -68,7 +68,7 @@ func Test_Strategy_Retrieve_succeeds(t *testing.T) {
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
-			rs := strategy.New(store.NewDefatultStrategy(), *tt.config, log.New(io.Discard))
+			rs := strategy.New(*tt.config, log.New(io.Discard))
 			token, _ := config.NewParsedTokenConfig(tt.token, *tt.config)
 			got := rs.RetrieveByToken(context.TODO(), tt.impl(t), token)
 			if got.Err != nil {
@@ -103,8 +103,7 @@ func Test_CustomStrategyFuncMap_add_own(t *testing.T) {
 				return m, nil
 			}
 
-			s := strategy.New(store.NewDefatultStrategy(), *genVarsConf, log.New(io.Discard))
-			s.WithStrategyFuncMap(strategy.StrategyFuncMap{config.AzTableStorePrefix: custFunc})
+			s := strategy.New(*genVarsConf, log.New(io.Discard), strategy.WithStrategyFuncMap(strategy.StrategyFuncMap{config.AzTableStorePrefix: custFunc}))
 
 			store, _ := s.SelectImplementation(context.TODO(), token)
 			_ = s.RetrieveByToken(context.TODO(), store, token)
@@ -273,7 +272,7 @@ func Test_SelectImpl_With(t *testing.T) {
 			tearDown := tt.setUpTearDown()
 			defer tearDown()
 			want := tt.expect()
-			rs := strategy.New(store.NewDefatultStrategy(), *tt.config, log.New(io.Discard))
+			rs := strategy.New(*tt.config, log.New(io.Discard))
 			token, _ := config.NewParsedTokenConfig(tt.token, *tt.config)
 			got, err := rs.SelectImplementation(context.TODO(), token)
 
