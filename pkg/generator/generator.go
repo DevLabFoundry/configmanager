@@ -29,7 +29,7 @@ type retrieveIface interface {
 // relevant strategy network calls to the config store implementations
 type GenVars struct {
 	Logger   log.ILogger
-	strategy retrieveIface
+	strategy strategy.StrategyFuncMap
 	ctx      context.Context
 	config   config.GenVarsConfig
 	// rawMap is the internal object that holds the values
@@ -61,22 +61,21 @@ func newGenVars(ctx context.Context, opts ...Opts) *GenVars {
 		// return using default config
 		config: *conf,
 	}
+	g.strategy = nil
 
+	// now apply additional opts
 	for _, o := range opts {
 		o(g)
 	}
 
-	// using a default Strategy
-	g.strategy = strategy.New(store.NewDefatultStrategy(), *conf, g.Logger)
-	// now apply
 	return g
 }
 
 // WithStrategyMap
 //
-// Adds addtional funcs for storageRetrieval
+// Adds addtional funcs for storageRetrieval used for testing only
 func (c *GenVars) WithStrategyMap(sm strategy.StrategyFuncMap) *GenVars {
-	c.strategy.WithStrategyFuncMap(sm)
+	c.strategy = sm
 	return c
 }
 
@@ -195,12 +194,13 @@ func (c *GenVars) generate(rawMap *rawTokenMap) error {
 		token := parsedToken // safe closure capture
 		// take value from config allocation on a per iteration basis
 		go func() {
-			storeStrategy, err := c.strategy.SelectImplementation(c.ctx, token)
+			s := strategy.New(c.config, c.Logger, strategy.WithStrategyFuncMap(c.strategy))
+			storeStrategy, err := s.SelectImplementation(c.ctx, token)
 			if err != nil {
 				outCh <- &strategy.TokenResponse{Err: err}
 				return
 			}
-			outCh <- c.strategy.RetrieveByToken(c.ctx, storeStrategy, token)
+			outCh <- s.RetrieveByToken(c.ctx, storeStrategy, token)
 		}()
 	}
 
