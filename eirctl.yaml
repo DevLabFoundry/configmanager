@@ -1,0 +1,185 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Ensono/eirctl/refs/heads/main/schemas/schema_v1.json
+
+output: prefixed
+debug: false
+
+contexts:
+  go1x:
+    container:
+      name: golang:1.24.4-bookworm
+      enable_dind: true
+      enable_mount: true
+    envfile:
+      exclude:
+        - GO
+        - CXX
+        - CGO
+
+  golint:
+    container:
+      name: golangci/golangci-lint:v2.1.5-alpine
+      enable_mount: true
+    envfile:
+      exclude:
+        - GO
+        - CXX
+        - CGO
+        - PATH
+        - HOME
+
+tasks:
+  clean:
+    context: go1x
+    command:
+      - rm -rf dist/*
+      - rm -rf .coverage
+      - mkdir -p dist .coverage
+
+  run:test:
+    description: Runs the tests
+    context: go1x
+    command:
+      - |
+        go test ./... -v -buildvcs=false -mod=readonly -race -coverpkg=./... -coverprofile=.coverage/out | tee .coverage/unit
+
+  install:
+    description: Install dependencies
+    command: |
+      go mod tidy
+
+  lint:vet:
+    description: Runs lint and vet
+    context: go1x
+    command: |
+      go vet
+
+  golint:
+   # in CI it is run 
+    context: golint
+    description: Runs the linter and go vet and other default static checks
+    allow_failure: false
+    command:
+      # echo "lint ran with exit code: $?"
+      # pwd && ls -lat 
+      - | 
+        golangci-lint run
+
+  vuln:check:
+    context: go1x
+    description: | 
+      Runs a vulnerability scan against the code base
+    command: 
+      - |
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+        govulncheck ./...
+
+  coverage:
+    description: generate coverage
+    context: go1x
+    command:
+      - | 
+        go install github.com/jstemmer/go-junit-report/v2@latest
+        go install github.com/axw/gocov/gocov@latest
+        go install github.com/AlekSi/gocov-xml@latest
+        go-junit-report -in .coverage/unit > .coverage/report-junit.xml
+        gocov convert .coverage/out | gocov-xml > .coverage/report-cobertura.xml
+
+  show:coverage:
+    description: Opens the current coverage viewer for the the configmanager utility.
+    command: go tool cover -html=.coverage/out
+
+  show_docs:
+    description: | 
+      Opens a webview with godoc running
+      Already filters the packages to this one and enables
+      internal/private package documentation
+# go install golang.org/x/tools/cmd/godoc@latest
+    command: |
+      open http://localhost:6060/pkg/github.com/DevLabFoundry/configmanager/v2/?m=all
+      godoc -notes "BUG|TODO" -play -http=:6060
+
+  build:binary:
+    context: go1x
+    description: |
+      Generates binaries in a dist folder
+
+      Generates all the binaries for the configmanager utility.
+    command:
+      - | 
+        ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Version={{.VERSION}}\" -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Revision={{.REVISION}}\" -extldflags -static"
+        GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false -ldflags="$ldflags" \
+        -o ./dist/configmanager-${GOOS}-${GOARCH}${BUILD_SUFFIX} ./cmd
+    reset_context: true
+    variations:
+      - BUILD_GOOS: darwin
+        BUILD_GOARCH: amd64
+        BUILD_SUFFIX: ""
+      - BUILD_GOOS: darwin
+        BUILD_GOARCH: arm64
+        BUILD_SUFFIX: ""
+      - BUILD_GOOS: linux
+        BUILD_GOARCH: amd64
+        BUILD_SUFFIX: ""
+      - BUILD_GOOS: linux
+        BUILD_GOARCH: arm64
+        BUILD_SUFFIX: ""
+      - BUILD_GOOS: windows
+        BUILD_GOARCH: amd64
+        BUILD_SUFFIX: ".exe"
+      - BUILD_GOOS: windows
+        BUILD_GOARCH: arm64
+        BUILD_SUFFIX: ".exe"
+      - BUILD_GOOS: windows
+        BUILD_GOARCH: "386"
+        BUILD_SUFFIX: ".exe"
+    required:
+      args:
+        - VERSION
+        - REVISION
+
+  tag:
+    description: |
+      Usage `eirctl tag GIT_TAG=2111dsfsdfa REVISION=as2342432`
+
+    command: |
+      git tag -a ${VERSION} -m "ci tag release" ${REVISION}
+      git push origin ${VERSION}
+    required:
+      env:
+        - VERSION
+        - REVISION
+
+pipelines:
+  test: 
+    - task: clean
+    - task: run:test
+      depends_on: clean
+    - task: coverage
+      depends_on: run:test
+
+  lint: 
+    - task: lint:vet
+    - task: vuln:check
+  
+  show_coverage:
+    - pipeline: test
+    - task: show:coverage
+      depends_on: test
+  
+  build:bin: 
+    - task: clean
+    - task: build:binary
+      depends_on: clean
+
+# version: '3'
+
+# env:
+#   OWNER: DevLabFoundry
+#   NAME: configmanager
+#   GO_TARGET_ARCH: "darwin"
+#   GIT_TAG: "0.0.0"
+#   VERSION: "v{{.GIT_TAG}}"
+#   REVISION: '{{.REVISION | default "aaaa1234" }}'
+
+# tasks:
+

@@ -52,11 +52,11 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Install Task
-        uses: arduino/setup-task@v2
-        with:
-          version: 3.x
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Eirctl
+        uses: ensono/actions/eirctl-setup@v0.3.1
+        with: 
+          version: 0.6.5
+          isPrerelease: false
 
       - name: install deps
         run: |
@@ -66,10 +66,10 @@ jobs:
           git config user.name ${{ github.actor }}
       - name: release library
         run: |
-          task tag GIT_TAG=${SEMVER} REVISION=$GITHUB_SHA
+          GIT_TAG=${SEMVER} REVISION=$GITHUB_SHA eirctl run tag
       - name: build binary
         run: |
-          task bin REVISION=$GITHUB_SHA GIT_TAG=${SEMVER}
+          eirctl run pipeline build:bin --set VERSION=${SEMVER} --set REVISION=$GITHUB_SHA 
       - name: Release binary
         uses: softprops/action-gh-release@v2
         with:
