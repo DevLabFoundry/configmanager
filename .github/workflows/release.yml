@@ -56,7 +56,7 @@ jobs:
 
       - name: build binary
         run: |
-          eirctl run pipeline build:bin --set VERSION=${SEMVER} --set REVISION=$GITHUB_SHA 
+          VERSION=${SEMVER} REVISION=$GITHUB_SHA eirctl run pipeline build:bin
 
       - name: Release binary
         uses: softprops/action-gh-release@v2
