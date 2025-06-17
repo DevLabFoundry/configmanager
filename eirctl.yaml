@@ -55,21 +55,21 @@ tasks:
       go vet
 
   golint:
-   # in CI it is run 
+    # in CI it is run
     context: golint
     description: Runs the linter and go vet and other default static checks
     allow_failure: false
     command:
       # echo "lint ran with exit code: $?"
-      # pwd && ls -lat 
-      - | 
+      # pwd && ls -lat
+      - |
         golangci-lint run
 
   vuln:check:
     context: go1x
-    description: | 
+    description: |
       Runs a vulnerability scan against the code base
-    command: 
+    command:
       - |
         go install golang.org/x/vuln/cmd/govulncheck@latest
         govulncheck ./...
@@ -78,7 +78,7 @@ tasks:
     description: generate coverage
     context: go1x
     command:
-      - | 
+      - |
         go install github.com/jstemmer/go-junit-report/v2@latest
         go install github.com/axw/gocov/gocov@latest
         go install github.com/AlekSi/gocov-xml@latest
@@ -90,11 +90,11 @@ tasks:
     command: go tool cover -html=.coverage/out
 
   show_docs:
-    description: | 
+    description: |
       Opens a webview with godoc running
       Already filters the packages to this one and enables
       internal/private package documentation
-# go install golang.org/x/tools/cmd/godoc@latest
+    # go install golang.org/x/tools/cmd/godoc@latest
     command: |
       open http://localhost:6060/pkg/github.com/DevLabFoundry/configmanager/v2/?m=all
       godoc -notes "BUG|TODO" -play -http=:6060
@@ -103,13 +103,12 @@ tasks:
     context: go1x
     description: |
       Generates binaries in a dist folder
-
       Generates all the binaries for the configmanager utility.
     command:
-      - | 
-        ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Version={{.VERSION}}\" -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Revision={{.REVISION}}\" -extldflags -static"
+      - |
+        ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Revision=${REVISION}\" -extldflags -static"
         GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false -ldflags="$ldflags" \
-        -o ./dist/configmanager-${GOOS}-${GOARCH}${BUILD_SUFFIX} ./cmd
+        -o ./dist/configmanager-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX} ./cmd
     reset_context: true
     variations:
       - BUILD_GOOS: darwin
@@ -134,7 +133,7 @@ tasks:
         BUILD_GOARCH: "386"
         BUILD_SUFFIX: ".exe"
     required:
-      args:
+      env:
         - VERSION
         - REVISION
 
@@ -151,24 +150,23 @@ tasks:
         - REVISION
 
 pipelines:
-  test: 
+  test:
     - task: clean
     - task: run:test
       depends_on: clean
     - task: coverage
       depends_on: run:test
 
-  lint: 
+  lint:
     - task: lint:vet
     - task: vuln:check
-  
+
   show_coverage:
     - pipeline: test
     - task: show:coverage
       depends_on: test
-  
-  build:bin: 
+
+  build:bin:
     - task: clean
     - task: build:binary
       depends_on: clean
-
