@@ -171,15 +171,3 @@ pipelines:
     - task: build:binary
       depends_on: clean
 
-# version: '3'
-
-# env:
-#   OWNER: DevLabFoundry
-#   NAME: configmanager
-#   GO_TARGET_ARCH: "darwin"
-#   GIT_TAG: "0.0.0"
-#   VERSION: "v{{.GIT_TAG}}"
-#   REVISION: '{{.REVISION | default "aaaa1234" }}'
-
-# tasks:
-
