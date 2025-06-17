@@ -40,8 +40,6 @@ jobs:
           echo "VERSION -> $GITVERSION_SEMVER"
   test:
     runs-on: ubuntu-latest
-    container:
-      image: golang:1.24-bookworm
     needs: set-version
     env:
       SEMVER: ${{ needs.set-version.outputs.semVer }}

@@ -40,10 +40,6 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    container:
-      image: golang:1.24-bookworm
-      env:
-        FOO: Bar
     needs: set-version
     env:
       SEMVER: ${{ needs.set-version.outputs.semVer }}
@@ -58,18 +54,17 @@ jobs:
           version: 0.6.5
           isPrerelease: false
 
-      - name: install deps
+      - name: release library
         run: |
-          apt-get update && apt-get install jq git -y
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.email ${{ github.actor }}-ci@gha.org
           git config user.name ${{ github.actor }}
-      - name: release library
-        run: |
           GIT_TAG=${SEMVER} REVISION=$GITHUB_SHA eirctl run tag
+
       - name: build binary
         run: |
           eirctl run pipeline build:bin --set VERSION=${SEMVER} --set REVISION=$GITHUB_SHA 
+
       - name: Release binary
         uses: softprops/action-gh-release@v2
         with:
