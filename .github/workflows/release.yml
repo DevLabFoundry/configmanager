@@ -54,13 +54,6 @@ jobs:
           version: 0.6.5
           isPrerelease: false
 
-      - name: release library
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git config user.email ${{ github.actor }}-ci@gha.org
-          git config user.name ${{ github.actor }}
-          GIT_TAG=${SEMVER} REVISION=$GITHUB_SHA eirctl run tag
-
       - name: build binary
         run: |
           eirctl run pipeline build:bin --set VERSION=${SEMVER} --set REVISION=$GITHUB_SHA 
@@ -74,3 +67,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           files: ./dist/*
           prerelease: false
+
+      - name: release library
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.email ${{ github.actor }}-ci@gha.org
+          git config user.name ${{ github.actor }}
+          VERSION=${SEMVER} REVISION=$GITHUB_SHA eirctl run tag
