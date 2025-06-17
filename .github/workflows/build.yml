@@ -40,8 +40,8 @@ jobs:
           echo "VERSION -> $GITVERSION_SEMVER"
   test:
     runs-on: ubuntu-latest
-    container:
-      image: golang:1.24-bookworm
+    # container:
+    #   image: golang:1.24-bookworm
     needs: set-version
     env:
       SEMVER: ${{ needs.set-version.outputs.semVer }}
@@ -57,12 +57,12 @@ jobs:
           version: 0.6.5
           isPrerelease: false
 
-      - name: install deps
-        run: |
-          apt update && apt install -y jq git unzip
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git config user.email ${{ github.actor }}-ci@gha.org
-          git config user.name ${{ github.actor }}
+      # - name: install deps
+      #   run: |
+      #     apt update && apt install -y jq git unzip
+      #     git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      #     git config user.email ${{ github.actor }}-ci@gha.org
+      #     git config user.name ${{ github.actor }}
 
       - name: Run Lint
         run: |

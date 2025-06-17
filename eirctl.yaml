@@ -18,6 +18,7 @@ contexts:
   golint:
     container:
       name: golangci/golangci-lint:v2.1.5-alpine
+      enable_dind: true
       enable_mount: true
     envfile:
       exclude:
