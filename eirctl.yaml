@@ -6,7 +6,7 @@ debug: false
 contexts:
   go1x:
     container:
-      name: golang:1.24.4-bookworm
+      name: golang:1.24.6-bookworm
       enable_dind: true
       enable_mount: true
     envfile:

@@ -52,7 +52,7 @@ jobs:
       - name: Install Eirctl
         uses: ensono/actions/eirctl-setup@v0.3.1
         with: 
-          version: 0.6.5
+          version: 0.7.6
           isPrerelease: false
 
       - name: Run Lint
