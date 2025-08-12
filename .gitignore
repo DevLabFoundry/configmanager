@@ -9,6 +9,7 @@
 vendor
 bin
 dist
+.deps/
 
 # tests
 .coverage
