@@ -99,16 +99,20 @@ tasks:
       open http://localhost:6060/pkg/github.com/DevLabFoundry/configmanager/v2/?m=all
       godoc -notes "BUG|TODO" -play -http=:6060
 
-  build:binary:
+  go:build:binary:
     context: go1x
     description: |
       Generates binaries in a dist folder
       Generates all the binaries for the configmanager utility.
     command:
       - |
+        mkdir -p /eirctl/.deps
         ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Revision=${REVISION}\" -extldflags -static"
-        GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false -ldflags="$ldflags" \
+        GOPATH=/eirctl/.deps GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false -ldflags="$ldflags" \
         -o ./dist/configmanager-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX} ./cmd
+        echo "---"
+        echo "Built: configmanager-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX}"
+        echo "Version: ${VERSION}"
     reset_context: true
     variations:
       - BUILD_GOOS: darwin
@@ -168,5 +172,5 @@ pipelines:
 
   build:bin:
     - task: clean
-    - task: build:binary
+    - task: go:build:binary
       depends_on: clean
