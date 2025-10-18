@@ -13,7 +13,9 @@ contexts:
 
 pipelines:
   gha:unit:test:
-    - pipeline: test:unit
+    - pipeline: test:unit 
+      env:
+        ROOT_PKG_NAME: github.com/DevLabFoundry
     - task: sonar:coverage:prep
       depends_on: test:unit
 
@@ -90,8 +92,8 @@ tasks:
     command:
       - | 
         # SonarCloud expects relative file paths, but Go generates coverage with full module paths
-        # Convert from 'github.com/Ensono/eirctl/path/file.go' to 'path/file.go'
-        sed -i 's|github.com/Ensono/eirctl/||g' .coverage/out
+        # Convert from 'github.com/DevLabFoundry/configmanager/path/file.go' to 'path/file.go'
+        sed -i 's|github.com/DevLabFoundry/configmanager/||g' .coverage/out
         echo "Coverage file first 20 lines after conversion:"
         head -20 .coverage/out
         echo "Coverage file line count:"
