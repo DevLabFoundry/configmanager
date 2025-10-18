@@ -44,14 +44,16 @@ func NewGcpSecrets(ctx context.Context, logger log.ILogger) (*GcpSecrets, error)
 
 func (imp *GcpSecrets) SetToken(token *config.ParsedTokenConfig) {
 	storeConf := &GcpSecretsConfig{}
-	token.ParseMetadata(storeConf)
+	_ = token.ParseMetadata(storeConf)
 	imp.token = token
 	imp.config = storeConf
 }
 
 func (imp *GcpSecrets) Token() (string, error) {
 	// Close client currently as new one would be created per iteration
-	defer imp.close()
+	defer func() {
+		_ = imp.close()
+	}()
 
 	imp.logger.Info("Concrete implementation GcpSecrets")
 	imp.logger.Info("GcpSecrets Token: %s", imp.token.String())

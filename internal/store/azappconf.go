@@ -41,7 +41,10 @@ type AzAppConfConfig struct {
 // NewAzAppConf
 func NewAzAppConf(ctx context.Context, token *config.ParsedTokenConfig, logger log.ILogger) (*AzAppConf, error) {
 	storeConf := &AzAppConfConfig{}
-	token.ParseMetadata(storeConf)
+	if err := token.ParseMetadata(storeConf); err != nil {
+		return nil, err
+	}
+
 	backingStore := &AzAppConf{
 		ctx:    ctx,
 		config: storeConf,

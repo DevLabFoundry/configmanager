@@ -43,7 +43,7 @@ func NewParamStore(ctx context.Context, logger log.ILogger) (*ParamStore, error)
 
 func (imp *ParamStore) SetToken(token *config.ParsedTokenConfig) {
 	storeConf := &ParamStrConfig{}
-	token.ParseMetadata(storeConf)
+	_ = token.ParseMetadata(storeConf)
 	imp.token = token
 	imp.config = storeConf
 }

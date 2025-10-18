@@ -35,7 +35,7 @@ func newRetrieveCmd(rootCmd *Root) {
 		},
 	}
 	retrieveCmd.PersistentFlags().StringArrayVarP(&f.tokens, "token", "t", []string{}, "Token pointing to a config/secret variable. This can be specified multiple times.")
-	retrieveCmd.MarkPersistentFlagRequired("token")
+	_ = retrieveCmd.MarkPersistentFlagRequired("token")
 	retrieveCmd.PersistentFlags().StringVarP(&f.path, "path", "p", "./app.env", "Path where to write out the replaced a config/secret variables. Special value of stdout can be used to return the output to stdout e.g. -p stdout, unix style output only")
 	rootCmd.Cmd.AddCommand(retrieveCmd)
 }

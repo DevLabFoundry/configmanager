@@ -36,7 +36,7 @@ type AzKvConfig struct {
 func NewKvScrtStore(ctx context.Context, token *config.ParsedTokenConfig, logger log.ILogger) (*KvScrtStore, error) {
 
 	storeConf := &AzKvConfig{}
-	token.ParseMetadata(storeConf)
+	_ = token.ParseMetadata(storeConf)
 
 	backingStore := &KvScrtStore{
 		ctx:    ctx,

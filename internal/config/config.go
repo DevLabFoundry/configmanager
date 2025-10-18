@@ -257,7 +257,7 @@ func (t *ParsedTokenConfig) extractMetadataStr() {
 	metaString := newS[:endIndex]
 	t.metadataStr = metaString
 	// Set Metadataless token
-	t.metadataLess = strings.Replace(token, startMetaStr+metaString+endMetaStr, "", -1)
+	t.metadataLess = strings.ReplaceAll(token, startMetaStr+metaString+endMetaStr, "")
 }
 
 // keysLookup returns the keysLookup path and the string without it

@@ -43,7 +43,7 @@ type AzTableStrgConfig struct {
 func NewAzTableStore(ctx context.Context, token *config.ParsedTokenConfig, logger log.ILogger) (*AzTableStore, error) {
 
 	storeConf := &AzTableStrgConfig{}
-	token.ParseMetadata(storeConf)
+	_ = token.ParseMetadata(storeConf)
 	// initialToken := config.ParseMetadata(token, storeConf)
 	backingStore := &AzTableStore{
 		ctx:    ctx,
@@ -100,7 +100,7 @@ func (imp *AzTableStore) Token() (string, error) {
 	if len(s.Value) > 0 {
 		// check for `value` property in entity
 		checkVal := make(map[string]interface{})
-		json.Unmarshal(s.Value, &checkVal)
+		_ = json.Unmarshal(s.Value, &checkVal)
 		if checkVal["value"] != nil {
 			return fmt.Sprintf("%v", checkVal["value"]), nil
 		}

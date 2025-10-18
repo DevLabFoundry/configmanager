@@ -43,7 +43,7 @@ type VaultConfig struct {
 
 func NewVaultStore(ctx context.Context, token *config.ParsedTokenConfig, logger log.ILogger) (*VaultStore, error) {
 	storeConf := &VaultConfig{}
-	token.ParseMetadata(storeConf)
+	_ = token.ParseMetadata(storeConf)
 	imp := &VaultStore{
 		ctx:    ctx,
 		logger: logger,
