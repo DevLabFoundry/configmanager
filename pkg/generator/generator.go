@@ -10,16 +10,15 @@ import (
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
 	"github.com/DevLabFoundry/configmanager/v2/internal/log"
-	"github.com/DevLabFoundry/configmanager/v2/internal/store"
 	"github.com/DevLabFoundry/configmanager/v2/internal/strategy"
 	"github.com/spyzhov/ajson"
 )
 
-type retrieveIface interface {
-	WithStrategyFuncMap(funcMap strategy.StrategyFuncMap) *strategy.RetrieveStrategy
-	RetrieveByToken(ctx context.Context, impl store.Strategy, in *config.ParsedTokenConfig) *strategy.TokenResponse
-	SelectImplementation(ctx context.Context, in *config.ParsedTokenConfig) (store.Strategy, error)
-}
+// type retrieveIface interface {
+// 	WithStrategyFuncMap(funcMap strategy.StrategyFuncMap) *strategy.RetrieveStrategy
+// 	RetrieveByToken(ctx context.Context, impl store.Strategy, in *config.ParsedTokenConfig) *strategy.TokenResponse
+// 	SelectImplementation(ctx context.Context, in *config.ParsedTokenConfig) (store.Strategy, error)
+// }
 
 // GenVars is the main struct holding the
 // strategy patterns iface

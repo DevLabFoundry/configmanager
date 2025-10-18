@@ -29,6 +29,6 @@ func newInsertCmd(rootCmd *Root) {
 		},
 	}
 	insertCmd.PersistentFlags().StringToStringVarP(&f.insertKv, "config-pair", "", defaultInsertKv, " token=value pair. This can be specified multiple times.")
-	insertCmd.MarkPersistentFlagRequired("config-pair")
+	_ = insertCmd.MarkPersistentFlagRequired("config-pair")
 	rootCmd.Cmd.AddCommand(insertCmd)
 }

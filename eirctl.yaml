@@ -3,88 +3,31 @@
 output: prefixed
 debug: false
 
-contexts:
-  go1x:
-    container:
-      name: golang:1.24.6-bookworm
-      enable_dind: true
-      enable_mount: true
-    envfile:
-      exclude:
-        - GO
-        - CXX
-        - CGO
+import:
+  - https://raw.githubusercontent.com/Ensono/eirctl/refs/tags/0.9.3/shared/build/go/eirctl.yaml
 
-  golint:
+contexts:
+  bash:
     container:
-      name: golangci/golangci-lint:v2.1.5-alpine
-      enable_dind: true
-      enable_mount: true
-    envfile:
-      exclude:
-        - GO
-        - CXX
-        - CGO
-        - PATH
-        - HOME
+      name: mirror.gcr.io/bash:5.0.18-alpine3.22
+
+pipelines:
+  gha:unit:test:
+    - pipeline: test:unit
+    - task: sonar:coverage:prep
+      depends_on: test:unit
+
+  show_coverage:
+    - pipeline: test:unit
+    - task: show:coverage
+      depends_on: test:unit
+
+  build:bin:
+    - task: clean
+    - task: go:build:binary
+      depends_on: clean
 
 tasks:
-  clean:
-    context: go1x
-    command:
-      - rm -rf dist/*
-      - rm -rf .coverage
-      - mkdir -p dist .coverage
-
-  run:test:
-    description: Runs the tests
-    context: go1x
-    command:
-      - |
-        go test ./... -v -buildvcs=false -mod=readonly -race -coverpkg=./... -coverprofile=.coverage/out | tee .coverage/unit
-
-  install:
-    description: Install dependencies
-    command: |
-      go mod tidy
-
-  lint:vet:
-    description: Runs lint and vet
-    context: go1x
-    command: |
-      go vet
-
-  golint:
-    # in CI it is run
-    context: golint
-    description: Runs the linter and go vet and other default static checks
-    allow_failure: false
-    command:
-      # echo "lint ran with exit code: $?"
-      # pwd && ls -lat
-      - |
-        golangci-lint run
-
-  vuln:check:
-    context: go1x
-    description: |
-      Runs a vulnerability scan against the code base
-    command:
-      - |
-        go install golang.org/x/vuln/cmd/govulncheck@latest
-        govulncheck ./...
-
-  coverage:
-    description: generate coverage
-    context: go1x
-    command:
-      - |
-        go install github.com/jstemmer/go-junit-report/v2@latest
-        go install github.com/axw/gocov/gocov@latest
-        go install github.com/AlekSi/gocov-xml@latest
-        go-junit-report -in .coverage/unit > .coverage/report-junit.xml
-        gocov convert .coverage/out | gocov-xml > .coverage/report-cobertura.xml
-
   show:coverage:
     description: Opens the current coverage viewer for the the configmanager utility.
     command: go tool cover -html=.coverage/out
@@ -106,7 +49,8 @@ tasks:
       Generates all the binaries for the configmanager utility.
     command:
       - |
-        mkdir -p /eirctl/.deps
+        mkdir -p .deps
+        unset GOTOOLCHAIN
         ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Revision=${REVISION}\" -extldflags -static"
         GOPATH=/eirctl/.deps GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false -ldflags="$ldflags" \
         -o ./dist/configmanager-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX} ./cmd
@@ -141,6 +85,18 @@ tasks:
         - VERSION
         - REVISION
 
+  sonar:coverage:prep:
+    context: bash
+    command:
+      - | 
+        # SonarCloud expects relative file paths, but Go generates coverage with full module paths
+        # Convert from 'github.com/Ensono/eirctl/path/file.go' to 'path/file.go'
+        sed -i 's|github.com/Ensono/eirctl/||g' .coverage/out
+        echo "Coverage file first 20 lines after conversion:"
+        head -20 .coverage/out
+        echo "Coverage file line count:"
+        wc -l .coverage/out
+
   tag:
     description: |
       Usage `eirctl tag GIT_TAG=2111dsfsdfa REVISION=as2342432`
@@ -153,24 +109,4 @@ tasks:
         - VERSION
         - REVISION
 
-pipelines:
-  test:
-    - task: clean
-    - task: run:test
-      depends_on: clean
-    - task: coverage
-      depends_on: run:test
 
-  lint:
-    - task: lint:vet
-    - task: vuln:check
-
-  show_coverage:
-    - pipeline: test
-    - task: show:coverage
-      depends_on: test
-
-  build:bin:
-    - task: clean
-    - task: go:build:binary
-      depends_on: clean
