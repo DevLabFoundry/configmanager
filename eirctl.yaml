@@ -91,9 +91,7 @@ tasks:
     context: bash
     command:
       - | 
-        # SonarCloud expects relative file paths, but Go generates coverage with full module paths
-        # Convert from 'github.com/DevLabFoundry/configmanager/path/file.go' to 'path/file.go'
-        sed -i 's|github.com/DevLabFoundry/configmanager/||g' .coverage/out
+        sed -i 's|github.com/DevLabFoundry/configmanager/v2/||g' .coverage/out
         echo "Coverage file first 20 lines after conversion:"
         head -20 .coverage/out
         echo "Coverage file line count:"
