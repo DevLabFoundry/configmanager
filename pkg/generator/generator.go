@@ -14,12 +14,6 @@ import (
 	"github.com/spyzhov/ajson"
 )
 
-// type retrieveIface interface {
-// 	WithStrategyFuncMap(funcMap strategy.StrategyFuncMap) *strategy.RetrieveStrategy
-// 	RetrieveByToken(ctx context.Context, impl store.Strategy, in *config.ParsedTokenConfig) *strategy.TokenResponse
-// 	SelectImplementation(ctx context.Context, in *config.ParsedTokenConfig) (store.Strategy, error)
-// }
-
 // GenVars is the main struct holding the
 // strategy patterns iface
 // any initialised config if overridded with withers
