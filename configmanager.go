@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	TERMINATING_CHAR string = `[^\'\"\s\n\\\,]`
+	TERMINATING_CHAR string = `[^\'\"\s\n\\\,]` // :\@\?\/
 )
 
 // generateAPI
@@ -93,6 +93,19 @@ func (c *ConfigManager) RetrieveWithInputReplaced(input string) (string, error) 
 	}
 
 	return replaceString(m, input), nil
+}
+
+func (c *ConfigManager) DiscoverTokens(input string) []string {
+	tokens := []string{}
+	// termChar := `[^\'\"\s\n\\\,\:\@]` // :\@\?\/
+	// (?:[^\'\"\\\,\:\@\&\s]|(?:[^/?]))+
+	for k := range config.VarPrefix {
+		re := regexp.MustCompile(regexp.QuoteMeta(string(k)+c.Config.TokenSeparator()) + `(?:[^'"\\,:@&\s/]|/(?:[^?]|$))+`)
+		// re := regexp.MustCompile(regexp.QuoteMeta(string(k)+c.Config.TokenSeparator()) + `(?:[^\'\"\s\n\\\,:@&]|(?:[^/?]))+`)
+		matches := re.FindAllString(input, -1)
+		tokens = append(tokens, matches...)
+	}
+	return tokens
 }
 
 // FindTokens extracts all replaceable tokens

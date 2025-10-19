@@ -520,6 +520,63 @@ func TestFindTokens(t *testing.T) {
 	}
 }
 
+func Test_ConfigManager_DiscoverTokens(t *testing.T) {
+	ttests := map[string]struct {
+		input     string
+		separator string
+		expect    []string
+	}{
+		"multiple tokens in single string": {
+			`Lorem_Ipsum: AWSPARAMSTR:///path/config|foo.user:AWSPARAMSTR:///path/config|password@AWSPARAMSTR:///path/config|foo.endpoint:AWSPARAMSTR:///path/config|foo.port/?someQ=AWSPARAMSTR:///path/queryparam[version=123]|p1&anotherQ=false`,
+			"://",
+			[]string{
+				"AWSPARAMSTR:///path/config|foo.user",
+				"AWSPARAMSTR:///path/config|password",
+				"AWSPARAMSTR:///path/config|foo.endpoint",
+				"AWSPARAMSTR:///path/config|foo.port",
+				"AWSPARAMSTR:///path/queryparam[version=123]|p1"},
+		},
+		"# tokens in single string": {
+			`Lorem_Ipsum: AWSPARAMSTR#/path/config|foo.user:AWSPARAMSTR#/path/config|password@AWSPARAMSTR#/path/config|foo.endpoint:AWSPARAMSTR#/path/config|foo.port/?someQ=AWSPARAMSTR#/path/queryparam[version=123]|p1&anotherQ=false`,
+			"#",
+			[]string{
+				"AWSPARAMSTR#/path/config|foo.user",
+				"AWSPARAMSTR#/path/config|password",
+				"AWSPARAMSTR#/path/config|foo.endpoint",
+				"AWSPARAMSTR#/path/config|foo.port",
+				"AWSPARAMSTR#/path/queryparam[version=123]|p1"},
+		},
+		"without leading slash and path like name # tokens in single string": {
+			`Lorem_Ipsum: AWSPARAMSTR#path_config|foo.user:AWSPARAMSTR#path_config|password@AWSPARAMSTR#path_config|foo.endpoint:AWSPARAMSTR#path_config|foo.port/?someQ=AWSPARAMSTR#path_queryparam[version=123]|p1&anotherQ=false`,
+			"#",
+			[]string{
+				"AWSPARAMSTR#path_config|foo.user",
+				"AWSPARAMSTR#path_config|password",
+				"AWSPARAMSTR#path_config|foo.endpoint",
+				"AWSPARAMSTR#path_config|foo.port",
+				"AWSPARAMSTR#path_queryparam[version=123]|p1"},
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			config.VarPrefix = map[config.ImplementationPrefix]bool{"AWSPARAMSTR": true}
+			c := configmanager.New(context.TODO())
+			c.Config.WithTokenSeparator(tt.separator)
+			got := c.DiscoverTokens(tt.input)
+			sort.Strings(got)
+			sort.Strings(tt.expect)
+
+			if len(got) != len(tt.expect) {
+				t.Errorf("wrong length - got %d, want %d", len(got), len(tt.expect))
+			}
+
+			if !reflect.DeepEqual(got, tt.expect) {
+				t.Errorf("input=(%q)\n\ngot: %v\n\nwant: %v", tt.input, got, tt.expect)
+			}
+		})
+	}
+}
+
 func Test_YamlRetrieveMarshalled_errored_in_generator(t *testing.T) {
 	m := &mockGenerator{}
 	m.generate = func(tokens []string) (generator.ParsedMap, error) {
