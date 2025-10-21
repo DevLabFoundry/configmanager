@@ -49,6 +49,7 @@ var (
 		GcpSecretsPrefix: true, HashicorpVaultPrefix: true, AzTableStorePrefix: true,
 		AzAppConfigPrefix: true, UnknownPrefix: true,
 	}
+	ErrConfigValidation = errors.New("config validation failed")
 )
 
 // GenVarsConfig defines the input config object to be passed
@@ -60,7 +61,9 @@ type GenVarsConfig struct {
 	// parseAdditionalVars func(token string) TokenConfigVars
 }
 
-// NewConfig
+// NewConfig returns a new GenVarsConfig with default values
+//
+// keySeparator should be only a single character
 func NewConfig() *GenVarsConfig {
 	return &GenVarsConfig{
 		tokenSeparator: tokenSeparator,
@@ -120,8 +123,15 @@ func (c *GenVarsConfig) Config() GenVarsConfig {
 	return cc
 }
 
-// Parsed token config section
+// Config returns the derefed value
+func (c *GenVarsConfig) Validate() error {
+	if len(c.keySeparator) > 1 {
+		return fmt.Errorf("%w, keyseparator can only be 1 character", ErrConfigValidation)
+	}
+	return nil
+}
 
+// Parsed token config section
 var ErrInvalidTokenPrefix = errors.New("token prefix has no implementation")
 
 type ParsedTokenConfig struct {
@@ -151,6 +161,27 @@ func NewParsedTokenConfig(token string, config GenVarsConfig) (*ParsedTokenConfi
 	ptc.prefix = ImplementationPrefix(prfx)
 	ptc.fullToken = token
 	return ptc.new(), nil
+}
+
+func NewTokenConfig(prefix ImplementationPrefix, config GenVarsConfig) (*ParsedTokenConfig, error) {
+	tokenConf := &ParsedTokenConfig{}
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+	tokenConf.keySeparator = config.keySeparator
+	tokenConf.tokenSeparator = config.tokenSeparator
+
+	tokenConf.prefix = prefix
+
+	return tokenConf, nil
+}
+
+func (ptc *ParsedTokenConfig) WithKeyPath(kp string) {
+	ptc.keysPath = kp
+}
+
+func (ptc *ParsedTokenConfig) WithMetadata(md string) {
+	ptc.metadataStr = md
 }
 
 func (ptc *ParsedTokenConfig) new() *ParsedTokenConfig {

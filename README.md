@@ -68,7 +68,7 @@ Where `configVar` can be either a parseable string `'som3#!S$CRet'` or a number 
 
 - Kubernetes
 
-   Avoid storing overly large configmaps and especially using secrets objects to store actual secrets e.g. DB passwords, 3rd party API creds, etc... By only storing a config file or a script containing only the tokens e.g. `AWSSECRETS#/$ENV/service/db-config` it can be git committed without writing numerous shell scripts, only storing either some interpolation vars like `$ENV` in a configmap or the entire configmanager token for smaller use cases.
+   Avoid storing overly large configmaps and especially using secrets objects to store actual secrets e.g. DB passwords, 3rd party API creds, etc... By only storing a config file or a script containing only the tokens e.g. `AWSSECRETS:///$ENV/service/db-config` it can be git committed without writing numerous shell scripts, only storing either some interpolation vars like `$ENV` in a configmap or the entire configmanager token for smaller use cases.
 
 - VMs
 
@@ -86,7 +86,7 @@ The token is made up of the following parts:
 
 _An example token would look like this_
 
-#### `AWSSECRETS#/path/to/my/key|lookup.Inside.Object[meta=data]`
+#### `AWSSECRETS:///path/to/my/key|lookup.Inside.Object[meta=data]`
 
 ### Implementation indicator
 
