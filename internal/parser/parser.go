@@ -25,7 +25,6 @@ var (
 type ConfigManagerTokenBlock struct {
 	BeginToken  config.Token
 	ParsedToken config.ParsedTokenConfig
-	Value       string
 	EndToken    config.Token
 }
 
@@ -126,7 +125,7 @@ func (p *Parser) peekTokenIsEnd() bool {
 	endTokens := map[config.TokenType]bool{
 		config.AT_SIGN: true, config.QUESTION_MARK: true, config.COLON: true,
 		config.DOUBLE_QUOTE: true, config.SINGLE_QUOTE: true,
-		config.NEW_LINE: true,
+		config.NEW_LINE: true, config.SLASH_QUESTION_MARK: true,
 	}
 	return endTokens[p.peekToken.Type]
 }
@@ -143,8 +142,8 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 	p.nextToken()
 
 	fullToken := currentToken.Literal
-	// pathLookup := ""
-	// metadataPortion := ""
+	// built as part of the below parser
+	sanitizedToken := ""
 
 	// should exit the loop if no end doc tag found
 	notFoundEnd := true
@@ -156,8 +155,8 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 		if p.peekTokenIs(config.BEGIN_CONFIGMANAGER_TOKEN) {
 			notFoundEnd = false
 			fullToken += p.curToken.Literal
+			sanitizedToken += p.curToken.Literal
 			stmt.EndToken = p.curToken
-			p.nextToken()
 			break
 		}
 
@@ -165,6 +164,7 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 		if p.peekTokenIsEnd() {
 			notFoundEnd = false
 			fullToken += p.curToken.Literal
+			sanitizedToken += p.curToken.Literal
 			stmt.EndToken = p.curToken
 			break
 		}
@@ -181,10 +181,11 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 				p.errors = append(p.errors, err)
 				return nil
 			}
-			p.nextToken()
-			continue
+			notFoundEnd = false
+			// keyPath would have built the keyPath and metadata if any
+			break
 		}
-		// optionally at the end of the path (i.e. a JSONPath look up)
+		// optionally at the end of the path without key separator
 		// check metadata there can be a metadata bracket `[key=val,k1=v2]`
 		if p.currentTokenIs(config.BEGIN_META_CONFIGMANAGER_TOKEN) {
 			if err := p.buildMetadata(configManagerToken); err != nil {
@@ -192,6 +193,7 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 				return nil
 			}
 		}
+		sanitizedToken += p.curToken.Literal
 		fullToken += p.curToken.Literal
 		p.nextToken()
 	}
@@ -201,8 +203,8 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 		return nil
 	}
 
+	configManagerToken.WithSanitizedToken(sanitizedToken)
 	stmt.ParsedToken = *configManagerToken
-	stmt.Value = fullToken
 
 	return stmt
 }
@@ -225,6 +227,7 @@ func (p *Parser) buildKeyPathSeparator(configManagerToken *config.ParsedTokenCon
 		keyPath += p.curToken.Literal
 		p.nextToken()
 	}
+	// p.nextToken()
 	configManagerToken.WithKeyPath(keyPath)
 	return nil
 }

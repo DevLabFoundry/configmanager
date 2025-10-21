@@ -220,7 +220,7 @@ All the usual token rules apply e.g. of `keySeparator`
 For HashicorpVault the first part of the token needs to be the name of the mountpath. In Dev Vaults this is `"secret"`,
  e.g.: `VAULT://secret___demo/configmanager|test`
 
-or if the secrets are at another location: `VAULT://another/mount/path__config/app1/db`
+or if the secrets are at another location: `VAULT://another/mount/path___config/app1/db`
 
 The hardcoded separator cannot be modified and you must separate your `mountPath` with `___` (3x `_`) followed by the key to the secret.
 

@@ -135,11 +135,17 @@ func (c *GenVarsConfig) Validate() error {
 var ErrInvalidTokenPrefix = errors.New("token prefix has no implementation")
 
 type ParsedTokenConfig struct {
-	prefix                       ImplementationPrefix
+	prefix ImplementationPrefix
+	// cofig values
 	keySeparator, tokenSeparator string
-	prefixLessToken, fullToken   string
-	metadataStr, keysPath        string
-	storeToken, metadataLess     string
+
+	fullToken      string
+	metadataStr    string
+	keysPath       string
+	sanitizedToken string
+	// depracated
+	prefixLessToken          string
+	storeToken, metadataLess string
 }
 
 // NewParsedTokenConfig returns a pointer to a new TokenConfig struct
@@ -184,6 +190,11 @@ func (ptc *ParsedTokenConfig) WithMetadata(md string) {
 	ptc.metadataStr = md
 }
 
+func (ptc *ParsedTokenConfig) WithSanitizedToken(v string) {
+	ptc.sanitizedToken = v
+}
+
+// depracated
 func (ptc *ParsedTokenConfig) new() *ParsedTokenConfig {
 	// order must be respected here
 	//
@@ -230,7 +241,7 @@ func (t *ParsedTokenConfig) StripMetadata() string {
 	return t.metadataLess
 }
 
-// Strip
+// StoreToken
 //
 // returns the only the store indicator string
 // without any of the configmanager token enrichment:
@@ -243,7 +254,7 @@ func (t *ParsedTokenConfig) StripMetadata() string {
 //
 // - prefix
 func (t *ParsedTokenConfig) StoreToken() string {
-	return t.storeToken
+	return t.sanitizedToken
 }
 
 // Full returns the full Token path.
