@@ -171,7 +171,6 @@ foo23 = val1
 }
 
 func Test_replaceString_with_envsubst(t *testing.T) {
-	t.Parallel()
 	ttests := map[string]struct {
 		expect string
 		setup  func() func()

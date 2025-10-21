@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"sync"
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/lexer"
 	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v2/internal/parser"
 	"github.com/DevLabFoundry/configmanager/v2/internal/strategy"
 	"github.com/spyzhov/ajson"
 )
@@ -150,14 +153,17 @@ func (c *GenVars) Generate(tokens []string) (ParsedMap, error) {
 
 	rtm := newRawTokenMap()
 	for _, token := range tokens {
-		// TODO: normalize tokens here potentially
-		// merge any tokens that only differ in keys lookup inside the object
-		parsedToken, err := config.NewParsedTokenConfig(token, c.config)
-		if err != nil {
-			c.Logger.Info(err.Error())
+		lexerSource := lexer.Source{FileName: token, FullPath: "", Input: token}
+		l := lexer.New(lexerSource, c.config)
+		p := parser.New(l, &c.config).WithLogger(log.New(os.Stderr))
+		parsed, errs := p.Parse()
+		if len(errs) > 0 {
+			c.Logger.Info(fmt.Sprintf("%v", errs))
 			continue
 		}
-		rtm.addToken(token, parsedToken)
+		for _, prsdToken := range parsed {
+			rtm.addToken(token, &prsdToken.ParsedToken)
+		}
 	}
 	// pass in default initialised retrieveStrategy
 	// input should be
@@ -165,6 +171,16 @@ func (c *GenVars) Generate(tokens []string) (ParsedMap, error) {
 		return nil, err
 	}
 	return c.rawMap.getTokenMap(), nil
+}
+
+// IsParsed will try to parse the return found string into
+// map[string]string
+// If found it will convert that to a map with all keys uppercased
+// and any characters
+func IsParsed(v any, trm ParsedMap) bool {
+	str := fmt.Sprint(v)
+	err := json.Unmarshal([]byte(str), &trm)
+	return err == nil
 }
 
 // generate checks if any tokens found
@@ -218,16 +234,6 @@ func (c *GenVars) generate(rawMap *rawTokenMap) error {
 		}
 	}
 	return nil
-}
-
-// IsParsed will try to parse the return found string into
-// map[string]string
-// If found it will convert that to a map with all keys uppercased
-// and any characters
-func IsParsed(v any, trm ParsedMap) bool {
-	str := fmt.Sprint(v)
-	err := json.Unmarshal([]byte(str), &trm)
-	return err == nil
 }
 
 // keySeparatorLookup checks if the key contains

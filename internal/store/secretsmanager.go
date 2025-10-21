@@ -42,6 +42,10 @@ func NewSecretsMgr(ctx context.Context, logger log.ILogger) (*SecretsMgr, error)
 
 }
 
+func (s *SecretsMgr) WithSvc(svc secretsMgrApi) {
+	s.svc = svc
+}
+
 func (imp *SecretsMgr) SetToken(token *config.ParsedTokenConfig) {
 	storeConf := &SecretsMgrConfig{}
 	if err := token.ParseMetadata(storeConf); err != nil {

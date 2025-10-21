@@ -45,8 +45,8 @@ func NewKvScrtStore(ctx context.Context, token *config.ParsedTokenConfig, logger
 		token:  token,
 	}
 
-	srvInit := azServiceFromToken(token.StoreToken(), "https://%s.vault.azure.net", 1)
-	backingStore.strippedToken = srvInit.token
+	srvInit := AzServiceFromToken(token.StoreToken(), "https://%s.vault.azure.net", 1)
+	backingStore.strippedToken = srvInit.Token
 
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
@@ -54,7 +54,7 @@ func NewKvScrtStore(ctx context.Context, token *config.ParsedTokenConfig, logger
 		return nil, err
 	}
 
-	c, err := azsecrets.NewClient(srvInit.serviceUri, cred, nil)
+	c, err := azsecrets.NewClient(srvInit.ServiceUri, cred, nil)
 	if err != nil {
 		logger.Error("%v\n%w", err, ErrClientInitialization)
 		return nil, err
@@ -63,6 +63,10 @@ func NewKvScrtStore(ctx context.Context, token *config.ParsedTokenConfig, logger
 	backingStore.svc = c
 	return backingStore, nil
 
+}
+
+func (s *KvScrtStore) WithSvc(svc kvApi) {
+	s.svc = svc
 }
 
 // setToken already happens in AzureKVClient in the constructor

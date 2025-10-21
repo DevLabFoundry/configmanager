@@ -156,7 +156,9 @@ See [examples of working with files](docs/examples.md#working-with-files) for mo
 
 The `[meta=data]` from the [example token](#awssecretspathtomykeylookupinsideobjectmetadata) - is the optional metadata about the target in the backing provider
 
-IT must have this format `[key=value]` - IT IS OPTIONAL
+
+> IT must have this format `[key=value]` - IT IS OPTIONAL
+> IT must be specified last - either after a path lookup or if there is no key look up path specified then after the full path
 
 The `key` and `value` would be provider specific. Meaning that different providers support different config, these values _CAN_ be safely omitted configmanager would just use the defaults where applicable or not specify the additional
 

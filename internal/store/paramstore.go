@@ -41,6 +41,10 @@ func NewParamStore(ctx context.Context, logger log.ILogger) (*ParamStore, error)
 	}, nil
 }
 
+func (s *ParamStore) WithSvc(svc paramStoreApi) {
+	s.svc = svc
+}
+
 func (imp *ParamStore) SetToken(token *config.ParsedTokenConfig) {
 	storeConf := &ParamStrConfig{}
 	_ = token.ParseMetadata(storeConf)

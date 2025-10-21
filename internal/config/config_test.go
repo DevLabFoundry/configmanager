@@ -30,69 +30,77 @@ func Test_MarshalMetadata_with_label_struct_succeeds(t *testing.T) {
 	}
 
 	ttests := map[string]struct {
-		config                *config.GenVarsConfig
-		rawToken              string
+		token                 func() *config.ParsedTokenConfig
 		wantLabel             string
 		wantMetaStrippedToken string
 	}{
 		"when provider expects label on token and label exists": {
-			config.NewConfig().WithTokenSeparator("://"),
-			`AZTABLESTORE://basjh/dskjuds/123|d88[label=dev]`,
+			func() *config.ParsedTokenConfig {
+				tkn, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
+				tkn.WithKeyPath("d88")
+				tkn.WithMetadata("label=dev")
+				tkn.WithSanitizedToken("basjh/dskjuds/123")
+				return tkn
+			},
 			"dev",
 			"basjh/dskjuds/123",
 		},
 		"when provider expects label on token and label does not exist": {
-			config.NewConfig().WithTokenSeparator("://"),
-			`AZTABLESTORE://basjh/dskjuds/123|d88[someother=dev]`,
+			func() *config.ParsedTokenConfig {
+				tkn, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
+				tkn.WithKeyPath("d88")
+				tkn.WithMetadata("someother=dev")
+				tkn.WithSanitizedToken("basjh/dskjuds/123")
+				return tkn
+			},
 			"",
 			"basjh/dskjuds/123",
 		},
 		"no metadata found": {
-			config.NewConfig().WithTokenSeparator("://"),
-			`AZTABLESTORE://basjh/dskjuds/123|d88`,
+			func() *config.ParsedTokenConfig {
+				tkn, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
+				tkn.WithKeyPath("d88")
+				tkn.WithSanitizedToken("basjh/dskjuds/123")
+				return tkn
+			},
 			"",
 			"basjh/dskjuds/123",
 		},
 		"no metadata found incorrect marker placement": {
-			config.NewConfig().WithTokenSeparator("://"),
-			`AZTABLESTORE://basjh/dskjuds/123|d88]asdas=bar[`,
+			func() *config.ParsedTokenConfig {
+				tkn, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
+				tkn.WithKeyPath("d88]asdas=bar[")
+				tkn.WithSanitizedToken("basjh/dskjuds/123")
+				return tkn
+			},
 			"",
 			"basjh/dskjuds/123",
 		},
 		"no metadata found incorrect marker placement and no key separator": {
-			config.NewConfig().WithTokenSeparator("://"),
-			`AZTABLESTORE://basjh/dskjuds/123]asdas=bar[`,
+			func() *config.ParsedTokenConfig {
+				tkn, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
+				tkn.WithSanitizedToken("basjh/dskjuds/123]asdas=bar[")
+				return tkn
+			},
 			"",
 			"basjh/dskjuds/123]asdas=bar[",
 		},
-		"no end found incorrect marker placement and no key separator": {
-			config.NewConfig().WithTokenSeparator("://"),
-			`AZTABLESTORE://basjh/dskjuds/123[asdas=bar`,
-			"",
-			"basjh/dskjuds/123[asdas=bar",
-		},
 		"no start found incorrect marker placement and no key separator": {
-			config.NewConfig().WithTokenSeparator("://"),
-			`AZTABLESTORE://basjh/dskjuds/123]asdas=bar]`,
+			func() *config.ParsedTokenConfig {
+				tkn, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
+				tkn.WithKeyPath("d88")
+				tkn.WithMetadata("someother=dev")
+				tkn.WithSanitizedToken("basjh/dskjuds/123]asdas=bar]")
+				return tkn
+			},
 			"",
 			"basjh/dskjuds/123]asdas=bar]",
-		},
-		"metadata is in the middle of path lookup": {
-			config.NewConfig().WithTokenSeparator("://"),
-			`AZTABLESTORE://basjh/dskjuds/123[label=bar]|lookup`,
-			"bar",
-			"basjh/dskjuds/123",
 		},
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
 			inputTyp := &labelMeta{}
-			got, err := config.NewParsedTokenConfig(tt.rawToken, *tt.config)
-
-			if err != nil {
-				t.Fatalf("got an error on NewParsedTokenconfig (%s)\n", tt.rawToken)
-			}
-
+			got := tt.token()
 			if got == nil {
 				t.Errorf(testutils.TestPhraseWithContext, "Unable to parse token", nil, config.ParsedTokenConfig{})
 			}
@@ -100,7 +108,7 @@ func Test_MarshalMetadata_with_label_struct_succeeds(t *testing.T) {
 			got.ParseMetadata(inputTyp)
 
 			if got.StoreToken() != tt.wantMetaStrippedToken {
-				t.Errorf(testutils.TestPhraseWithContext, "Token does not match", got.StripMetadata(), tt.wantMetaStrippedToken)
+				t.Errorf(testutils.TestPhraseWithContext, "Token does not match", got.StoreToken(), tt.wantMetaStrippedToken)
 			}
 
 			if inputTyp.Label != tt.wantLabel {
@@ -115,23 +123,27 @@ func Test_TokenParser_config(t *testing.T) {
 		Version string `json:"version"`
 	}
 	ttests := map[string]struct {
-		input              string
-		expPrefix          config.ImplementationPrefix
-		expLookupKeys      string
-		expStoreToken      string
-		expString          string // fullToken
-		expMetadataVersion string
+		rawToken, keyPath, metadataStr string
+		expPrefix                      config.ImplementationPrefix
+		expLookupKeys                  string
+		expStoreToken                  string // sanitised
+		expString                      string // fullToken
+		expMetadataVersion             string
 	}{
-		"bare":                              {"AWSSECRETS://foo/bar", config.SecretMgrPrefix, "", "foo/bar", "AWSSECRETS://foo/bar", ""},
-		"with metadata version":             {"AWSSECRETS://foo/bar[version=123]", config.SecretMgrPrefix, "", "foo/bar", "AWSSECRETS://foo/bar[version=123]", "123"},
-		"with keys lookup and label":        {"AWSSECRETS://foo/bar|key1.key2[version=123]", config.SecretMgrPrefix, "key1.key2", "foo/bar", "AWSSECRETS://foo/bar|key1.key2[version=123]", "123"},
-		"with keys lookup and longer token": {"AWSSECRETS://foo/bar|key1.key2]version=123]", config.SecretMgrPrefix, "key1.key2]version=123]", "foo/bar", "AWSSECRETS://foo/bar|key1.key2]version=123]", ""},
-		"with keys lookup but no keys":      {"AWSSECRETS://foo/bar/sdf/sddd.90dsfsd|[version=123]", config.SecretMgrPrefix, "", "foo/bar/sdf/sddd.90dsfsd", "AWSSECRETS://foo/bar/sdf/sddd.90dsfsd|[version=123]", "123"},
+		"bare":                              {"foo/bar", "", "", config.SecretMgrPrefix, "", "foo/bar", "AWSSECRETS://foo/bar", ""},
+		"with metadata version":             {"foo/bar", "", "version=123", config.SecretMgrPrefix, "", "foo/bar", "AWSSECRETS://foo/bar[version=123]", "123"},
+		"with keys lookup and label":        {"foo/bar", "key1.key2", "version=123", config.SecretMgrPrefix, "key1.key2", "foo/bar", "AWSSECRETS://foo/bar|key1.key2[version=123]", "123"},
+		"with keys lookup and longer token": {"foo/bar", "key1.key2]version=123]", "", config.SecretMgrPrefix, "key1.key2]version=123]", "foo/bar", "AWSSECRETS://foo/bar|key1.key2]version=123]", ""},
+		"with keys lookup but no keys":      {"foo/bar/sdf/sddd.90dsfsd", "", "version=123", config.SecretMgrPrefix, "", "foo/bar/sdf/sddd.90dsfsd", "AWSSECRETS://foo/bar/sdf/sddd.90dsfsd[version=123]", "123"},
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
 			conf := &mockConfAwsSecrMgr{}
-			got, _ := config.NewParsedTokenConfig(tt.input, *config.NewConfig())
+			got, _ := config.NewToken(tt.expPrefix, *config.NewConfig())
+			got.WithSanitizedToken(tt.rawToken)
+			got.WithKeyPath(tt.keyPath)
+			got.WithMetadata(tt.metadataStr)
+
 			got.ParseMetadata(conf)
 
 			if got.LookupKeys() != tt.expLookupKeys {

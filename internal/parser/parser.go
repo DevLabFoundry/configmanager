@@ -80,7 +80,7 @@ func (p *Parser) Parse() ([]ConfigManagerTokenBlock, []error) {
 		if p.currentTokenIs(config.BEGIN_CONFIGMANAGER_TOKEN) {
 			// parseGenDocBlocks will advance the token until
 			// it hits the END_DOC_GEN token
-			configManagerToken, err := config.NewTokenConfig(p.curToken.ImpPrefix, *p.config)
+			configManagerToken, err := config.NewToken(p.curToken.ImpPrefix, *p.config)
 			if err != nil {
 				return nil, []error{err}
 			}
@@ -185,6 +185,7 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 			// keyPath would have built the keyPath and metadata if any
 			break
 		}
+
 		// optionally at the end of the path without key separator
 		// check metadata there can be a metadata bracket `[key=val,k1=v2]`
 		if p.currentTokenIs(config.BEGIN_META_CONFIGMANAGER_TOKEN) {
@@ -192,6 +193,8 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 				p.errors = append(p.errors, err)
 				return nil
 			}
+			notFoundEnd = false
+			break
 		}
 		sanitizedToken += p.curToken.Literal
 		fullToken += p.curToken.Literal
@@ -238,6 +241,7 @@ func (p *Parser) buildMetadata(configManagerToken *config.ParsedTokenConfig) err
 	// errNoClose := fmt.Errorf("%w, metadata string has no closing", ErrNoEndTagFound)
 	metadata := ""
 	found := false
+	p.nextToken()
 	for !p.peekTokenIs(config.EOF) {
 		if p.peekTokenIsEnd() {
 			return fmt.Errorf("%w, metadata string has no closing", ErrNoEndTagFound)

@@ -52,8 +52,8 @@ func NewAzTableStore(ctx context.Context, token *config.ParsedTokenConfig, logge
 		token:  token,
 	}
 
-	srvInit := azServiceFromToken(token.StoreToken(), "https://%s.table.core.windows.net/%s", 2)
-	backingStore.strippedToken = srvInit.token
+	srvInit := AzServiceFromToken(token.StoreToken(), "https://%s.table.core.windows.net/%s", 2)
+	backingStore.strippedToken = srvInit.Token
 
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
@@ -61,7 +61,7 @@ func NewAzTableStore(ctx context.Context, token *config.ParsedTokenConfig, logge
 		return nil, err
 	}
 
-	c, err := aztables.NewClient(srvInit.serviceUri, cred, nil)
+	c, err := aztables.NewClient(srvInit.ServiceUri, cred, nil)
 	if err != nil {
 		logger.Error("failed to init the client: %v", err)
 		return nil, fmt.Errorf("%v\n%w", err, ErrClientInitialization)
@@ -69,6 +69,10 @@ func NewAzTableStore(ctx context.Context, token *config.ParsedTokenConfig, logge
 
 	backingStore.svc = c
 	return backingStore, nil
+}
+
+func (s *AzTableStore) WithSvc(svc tableStoreApi) {
+	s.svc = svc
 }
 
 // setToken already happens in the constructor

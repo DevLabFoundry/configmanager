@@ -42,6 +42,10 @@ func NewGcpSecrets(ctx context.Context, logger log.ILogger) (*GcpSecrets, error)
 	}, nil
 }
 
+func (s *GcpSecrets) WithSvc(svc gcpSecretsApi) {
+	s.svc = svc
+}
+
 func (imp *GcpSecrets) SetToken(token *config.ParsedTokenConfig) {
 	storeConf := &GcpSecretsConfig{}
 	_ = token.ParseMetadata(storeConf)

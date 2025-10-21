@@ -9,6 +9,7 @@ import (
 	"github.com/DevLabFoundry/configmanager/v2/internal/lexer"
 	"github.com/DevLabFoundry/configmanager/v2/internal/log"
 	"github.com/DevLabFoundry/configmanager/v2/internal/parser"
+	"github.com/DevLabFoundry/configmanager/v2/internal/store"
 )
 
 var lexerSource = lexer.Source{FileName: "bar", FullPath: "/foo/bar"}
@@ -66,7 +67,7 @@ BAR=something
 	}
 }
 
-func Test_Parse_should_when_no_End_tag_found(t *testing.T) {
+func Test_Parse_should_faile_when_no_metadata_end_tag_found(t *testing.T) {
 	ttests := map[string]struct {
 		input string
 	}{
@@ -89,6 +90,76 @@ func Test_Parse_should_when_no_End_tag_found(t *testing.T) {
 			}
 			if !errors.Is(errs[0], parser.ErrNoEndTagFound) {
 				t.Errorf("unexpected error type\n got: %T, wanted: %T", errs, parser.ErrNoEndTagFound)
+			}
+		})
+	}
+}
+
+func Test_Parse_should_pass_with_metadata_end_tag(t *testing.T) {
+	ttests := map[string]struct {
+		input      string
+		metdataStr string
+	}{
+		"without keysPath": {
+			`AWSSECRETS:///foo[version=1.2.3]`,
+			`version=1.2.3`,
+		},
+		"with keysPath": {
+			`AWSSECRETS:///foo|path.one[version=1.2.3]`,
+			`version=1.2.3`,
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			lexerSource.Input = tt.input
+			cfg := config.NewConfig()
+			l := lexer.New(lexerSource, *cfg)
+			p := parser.New(l, cfg).WithLogger(log.New(os.Stderr))
+			parsed, errs := p.Parse()
+			if len(errs) > 0 {
+				t.Fatalf("unexpected number of errors\n got: %v, wanted: 0", errs)
+			}
+			for _, prsd := range parsed {
+				prsd.ParsedToken.LookupKeys()
+
+			}
+		})
+	}
+}
+
+func Test_Parse_ParseMetadata(t *testing.T) {
+
+	ttests := map[string]struct {
+		input string
+		typ   *store.SecretsMgrConfig
+	}{
+		"without keysPath": {
+			`AWSSECRETS:///foo[version=1.2.3]`,
+			&store.SecretsMgrConfig{},
+		},
+		"with keysPath": {
+			`AWSSECRETS:///foo|path.one[version=1.2.3]`,
+			&store.SecretsMgrConfig{},
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			lexerSource.Input = tt.input
+			cfg := config.NewConfig()
+			l := lexer.New(lexerSource, *cfg)
+			p := parser.New(l, cfg).WithLogger(log.New(os.Stderr))
+			parsed, errs := p.Parse()
+			if len(errs) > 0 {
+				t.Fatalf("%v", errs)
+			}
+
+			for _, p := range parsed {
+				if err := p.ParsedToken.ParseMetadata(tt.typ); err != nil {
+					t.Fatal(err)
+				}
+				if tt.typ.Version != "1.2.3" {
+					t.Errorf("got %v wanted 1.2.3", tt.typ.Version)
+				}
 			}
 		})
 	}

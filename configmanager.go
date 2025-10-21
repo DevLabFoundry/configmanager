@@ -110,6 +110,8 @@ func (c *ConfigManager) DiscoverTokens(input string) []string {
 
 // FindTokens extracts all replaceable tokens
 // from a given input string
+//
+//	Deprecated: FindTokens relies on Regex. Use DiscoverTokens
 func FindTokens(input string) []string {
 	tokens := []string{}
 	for k := range config.VarPrefix {

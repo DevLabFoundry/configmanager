@@ -138,38 +138,14 @@ type ParsedTokenConfig struct {
 	prefix ImplementationPrefix
 	// cofig values
 	keySeparator, tokenSeparator string
-
-	fullToken      string
+	// tokenb parts
 	metadataStr    string
 	keysPath       string
 	sanitizedToken string
-	// depracated
-	prefixLessToken          string
-	storeToken, metadataLess string
 }
 
-// NewParsedTokenConfig returns a pointer to a new TokenConfig struct
-// returns nil if current prefix does not correspond to an Implementation
-//
-// The caller needs to make sure it is not nil
-// TODO: a custom parser would be best here
-func NewParsedTokenConfig(token string, config GenVarsConfig) (*ParsedTokenConfig, error) {
-	ptc := &ParsedTokenConfig{}
-	prfx := strings.Split(token, config.TokenSeparator())[0]
-
-	// This should already only be a list of properly supported tokens but just in case
-	if found := VarPrefix[ImplementationPrefix(prfx)]; !found {
-		return nil, fmt.Errorf("prefix: %s\n%w", prfx, ErrInvalidTokenPrefix)
-	}
-
-	ptc.keySeparator = config.keySeparator
-	ptc.tokenSeparator = config.tokenSeparator
-	ptc.prefix = ImplementationPrefix(prfx)
-	ptc.fullToken = token
-	return ptc.new(), nil
-}
-
-func NewTokenConfig(prefix ImplementationPrefix, config GenVarsConfig) (*ParsedTokenConfig, error) {
+// NewToken initialises a *ParsedTokenConfig
+func NewToken(prefix ImplementationPrefix, config GenVarsConfig) (*ParsedTokenConfig, error) {
 	tokenConf := &ParsedTokenConfig{}
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -196,15 +172,16 @@ func (ptc *ParsedTokenConfig) WithSanitizedToken(v string) {
 
 // depracated
 func (ptc *ParsedTokenConfig) new() *ParsedTokenConfig {
-	// order must be respected here
-	//
-	ptc.prefixLessToken = strings.Replace(ptc.fullToken, fmt.Sprintf("%s%s", ptc.prefix, ptc.tokenSeparator), "", 1)
+	// // order must be respected here
+	// //
+	// ptc.prefixLessToken = strings.Replace(ptc.fullToken, fmt.Sprintf("%s%s", ptc.prefix, ptc.tokenSeparator), "", 1)
 
-	// token without metadata and the string itself
-	ptc.extractMetadataStr()
-	// token without keys
-	ptc.keysLookup()
-	return ptc
+	// // token without metadata and the string itself
+	// ptc.extractMetadataStr()
+	// // token without keys
+	// ptc.keysLookup()
+	// return ptc
+	return nil
 }
 
 func (t *ParsedTokenConfig) ParseMetadata(metadataTyp any) error {
@@ -231,28 +208,11 @@ func (t *ParsedTokenConfig) ParseMetadata(metadataTyp any) error {
 	return nil
 }
 
-func (t *ParsedTokenConfig) StripPrefix() string {
-	return t.prefixLessToken
-}
-
-// StripMetadata returns the fullToken without the
-// metadata
-func (t *ParsedTokenConfig) StripMetadata() string {
-	return t.metadataLess
-}
-
-// StoreToken
-//
-// returns the only the store indicator string
-// without any of the configmanager token enrichment:
-//
-// - metadata
-//
-// - keySeparator
-//
-// - keys
-//
-// - prefix
+// StoreToken returns the sanitized token without:
+//   - metadata
+//   - keySeparator
+//   - keys
+//   - prefix
 func (t *ParsedTokenConfig) StoreToken() string {
 	return t.sanitizedToken
 }
@@ -260,57 +220,25 @@ func (t *ParsedTokenConfig) StoreToken() string {
 // Full returns the full Token path.
 // Including key separator and metadata values
 func (t *ParsedTokenConfig) String() string {
-	return t.fullToken
+	token := fmt.Sprintf("%s%s%s", t.prefix, t.tokenSeparator, t.sanitizedToken)
+	if len(t.keysPath) > 0 {
+		token += t.keySeparator + t.keysPath
+	}
+
+	if len(t.metadataStr) > 0 {
+		token += fmt.Sprintf("[%s]", t.metadataStr)
+	}
+	return token
 }
 
 func (t *ParsedTokenConfig) LookupKeys() string {
 	return t.keysPath
 }
 
+func (t *ParsedTokenConfig) Metadata() string {
+	return t.metadataStr
+}
+
 func (t *ParsedTokenConfig) Prefix() ImplementationPrefix {
 	return t.prefix
-}
-
-const (
-	startMetaStr string = `[`
-	endMetaStr   string = `]`
-)
-
-// extractMetadataStr returns anything between the start and end
-// metadata markers in the token string itself
-// returns the token without meta
-func (t *ParsedTokenConfig) extractMetadataStr() {
-	token := t.prefixLessToken
-	t.metadataLess = token
-	startIndex := strings.Index(token, startMetaStr)
-	// token has no startMetaStr
-	if startIndex == -1 {
-		return
-	}
-	newS := token[startIndex+len(startMetaStr):]
-
-	endIndex := strings.Index(newS, endMetaStr)
-	// token has no meta end
-	if endIndex == -1 {
-		return
-	}
-	// metastring extracted
-	// complete [key=value] has been found
-	metaString := newS[:endIndex]
-	t.metadataStr = metaString
-	// Set Metadataless token
-	t.metadataLess = strings.ReplaceAll(token, startMetaStr+metaString+endMetaStr, "")
-}
-
-// keysLookup returns the keysLookup path and the string without it
-//
-// NOTE: metadata was already stripped at this point
-func (t *ParsedTokenConfig) keysLookup() {
-	keysIndex := strings.Index(t.metadataLess, t.keySeparator)
-	if keysIndex >= 0 {
-		t.keysPath = t.metadataLess[keysIndex+len(t.keySeparator):]
-		t.storeToken = t.metadataLess[:keysIndex]
-		return
-	}
-	t.storeToken = t.metadataLess
 }
