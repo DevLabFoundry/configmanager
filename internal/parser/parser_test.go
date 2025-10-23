@@ -20,25 +20,44 @@ func Test_ParserBlocks(t *testing.T) {
 		// prefix,path,keyLookup
 		expected [][3]string
 	}{
-		"tokens touching each other in source": {`foo stuyfsdfsf
-foo=AWSPARAMSTR:///path|keyAWSSECRETS:///foo
-other text her
-BAR=something
-		`, [][3]string{
-			{string(config.ParamStorePrefix), "/path", "key"},
-			{string(config.SecretMgrPrefix), "/foo", ""},
-		}},
-		"full URL of tokens": {`foo stuyfsdfsf
-foo=proto://AWSPARAMSTR:///config|user:AWSSECRETS:///creds|password@AWSPARAMSTR:///config|endpoint:AWSPARAMSTR:///config|port/?queryParam1=123&queryParam2=AWSPARAMSTR:///config|qp2
-# some comment
-BAR=something
-		`, [][3]string{
-			{string(config.ParamStorePrefix), "/config", "user"},
-			{string(config.SecretMgrPrefix), "/creds", "password"},
-			{string(config.ParamStorePrefix), "/config", "endpoint"},
-			{string(config.ParamStorePrefix), "/config", "port"},
-			{string(config.ParamStorePrefix), "/config", "qp2"},
-		}},
+		"tokens touching each other in source": {
+			`foo stuyfsdfsf
+		foo=AWSPARAMSTR:///path|keyAWSSECRETS:///foo
+		other text her
+		BAR=something
+				`, [][3]string{
+				{string(config.ParamStorePrefix), "/path", "key"},
+				{string(config.SecretMgrPrefix), "/foo", ""},
+			}},
+		"full URL of tokens": {
+			`foo stuyfsdfsf
+		foo=proto://AWSPARAMSTR:///config|user:AWSSECRETS:///creds|password@AWSPARAMSTR:///config|endpoint:AWSPARAMSTR:///config|port/?queryParam1=123&queryParam2=AWSPARAMSTR:///config|qp2
+		# some comment
+		BAR=something
+				`, [][3]string{
+				{string(config.ParamStorePrefix), "/config", "user"},
+				{string(config.SecretMgrPrefix), "/creds", "password"},
+				{string(config.ParamStorePrefix), "/config", "endpoint"},
+				{string(config.ParamStorePrefix), "/config", "port"},
+				{string(config.ParamStorePrefix), "/config", "qp2"},
+			},
+		},
+		"touching EOF single token": {
+			`AWSPARAMSTR:///config|qp2`,
+			[][3]string{
+				{string(config.ParamStorePrefix), "/config", "qp2"},
+			},
+		},
+		"touching EOF multi token": {
+			`proto://AWSPARAMSTR:///config|user:AWSSECRETS:///creds|password@AWSPARAMSTR:///config|endpoint:AWSPARAMSTR:///config|port/?queryParam1=123&queryParam2=AWSPARAMSTR:///config|qp2`,
+			[][3]string{
+				{string(config.ParamStorePrefix), "/config", "user"},
+				{string(config.SecretMgrPrefix), "/creds", "password"},
+				{string(config.ParamStorePrefix), "/config", "endpoint"},
+				{string(config.ParamStorePrefix), "/config", "port"},
+				{string(config.ParamStorePrefix), "/config", "qp2"},
+			},
+		},
 	}
 
 	for name, tt := range ttests {
@@ -67,15 +86,26 @@ BAR=something
 	}
 }
 
-func Test_Parse_should_faile_when_no_metadata_end_tag_found(t *testing.T) {
+func Test_Parse_should_fail_on_metadata(t *testing.T) {
 	ttests := map[string]struct {
-		input string
+		input  string
+		errTyp error
 	}{
-		"without keysPath": {
+		"when _end_tag_found without keysPath": {
 			`AWSSECRETS:///foo[version=1.2.3`,
+			parser.ErrNoEndTagFound,
 		},
-		"with keysPath": {
+		"when _end_tag_found with keysPath": {
 			`AWSSECRETS:///foo|path.one[version=1.2.3`,
+			parser.ErrNoEndTagFound,
+		},
+		"when no metadata has been supplied": {
+			`AWSSECRETS:///foo|path.one[]`,
+			parser.ErrMetadataEmpty,
+		},
+		"when no metadata has been supplied - without key path": {
+			`AWSSECRETS:///foo[]`,
+			parser.ErrMetadataEmpty,
 		},
 	}
 	for name, tt := range ttests {
@@ -88,7 +118,7 @@ func Test_Parse_should_faile_when_no_metadata_end_tag_found(t *testing.T) {
 			if len(errs) != 1 {
 				t.Fatalf("unexpected number of errors\n got: %v, wanted: 1", errs)
 			}
-			if !errors.Is(errs[0], parser.ErrNoEndTagFound) {
+			if !errors.Is(errs[0], tt.errTyp) {
 				t.Errorf("unexpected error type\n got: %T, wanted: %T", errs, parser.ErrNoEndTagFound)
 			}
 		})
@@ -141,6 +171,10 @@ func Test_Parse_ParseMetadata(t *testing.T) {
 			`AWSSECRETS:///foo|path.one[version=1.2.3]`,
 			&store.SecretsMgrConfig{},
 		},
+		"nestled in text": {
+			`someQ=AWSPARAMSTR:///path/queryparam|p1[version=1.2.3]&anotherQ`,
+			&store.SecretsMgrConfig{},
+		},
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
@@ -165,6 +199,59 @@ func Test_Parse_ParseMetadata(t *testing.T) {
 	}
 }
 
+func Test_Parse_Path_Keys_WithParsedMetadat(t *testing.T) {
+
+	ttests := map[string]struct {
+		input             string
+		typ               *store.SecretsMgrConfig
+		wantSanitizedPath string
+		wantKeyPath       string
+	}{
+		"without keysPath": {
+			`AWSSECRETS:///foo[version=1.2.3]`,
+			&store.SecretsMgrConfig{},
+			"/foo", "",
+		},
+		"with keysPath": {
+			`AWSSECRETS:///foo|path.one[version=1.2.3]`,
+			&store.SecretsMgrConfig{},
+			"/foo", "path.one",
+		},
+		"nestled in text": {
+			`someQ=AWSPARAMSTR:///path/queryparam|p1[version=1.2.3]&anotherQ`,
+			&store.SecretsMgrConfig{},
+			"/path/queryparam", "p1",
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			lexerSource.Input = tt.input
+			cfg := config.NewConfig()
+			l := lexer.New(lexerSource, *cfg)
+			p := parser.New(l, cfg).WithLogger(log.New(os.Stderr))
+			parsed, errs := p.Parse()
+			if len(errs) > 0 {
+				t.Fatalf("%v", errs)
+			}
+
+			for _, p := range parsed {
+				if p.ParsedToken.StoreToken() != tt.wantSanitizedPath {
+					t.Errorf("got %s want %s", p.ParsedToken.StoreToken(), tt.wantSanitizedPath)
+				}
+				if p.ParsedToken.LookupKeys() != tt.wantKeyPath {
+					t.Errorf("got %s want %s", p.ParsedToken.LookupKeys(), tt.wantKeyPath)
+				}
+				if err := p.ParsedToken.ParseMetadata(tt.typ); err != nil {
+					t.Fatal(err)
+				}
+				if tt.typ.Version != "1.2.3" {
+					t.Errorf("got %v wanted 1.2.3", tt.typ.Version)
+				}
+			}
+		})
+	}
+}
+
 func testHelperGenDocBlock(t *testing.T, stmtBlock parser.ConfigManagerTokenBlock, tokenType config.ImplementationPrefix, tokenValue, keysLookupPath string) bool {
 	t.Helper()
 	if stmtBlock.ParsedToken.Prefix() != tokenType {
@@ -178,7 +265,7 @@ func testHelperGenDocBlock(t *testing.T, stmtBlock parser.ConfigManagerTokenBloc
 	}
 
 	if stmtBlock.ParsedToken.LookupKeys() != keysLookupPath {
-		t.Errorf("token LookupKeys. got=%s, wanted=%s", stmtBlock.ParsedToken.LookupKeys(), tokenValue)
+		t.Errorf("token LookupKeys. got=%s, wanted=%s", stmtBlock.ParsedToken.LookupKeys(), keysLookupPath)
 		return false
 	}
 

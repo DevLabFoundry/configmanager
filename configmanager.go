@@ -5,11 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+
 	"regexp"
 	"slices"
 	"strings"
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/lexer"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v2/internal/parser"
 	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
 	"github.com/a8m/envsubst"
 	"gopkg.in/yaml.v3"
@@ -27,23 +32,33 @@ type generateAPI interface {
 type ConfigManager struct {
 	Config    *config.GenVarsConfig
 	generator generateAPI
+	logger    log.ILogger
 }
 
 // New returns an initialised instance of ConfigManager
 // Uses default config for:
 //
-// ```
-// outputPath = ""
-// keySeparator = "|"
-// tokenSeparator = "://"
-// ```
+//	outputPath = ""
+//	keySeparator = "|"
+//	tokenSeparator = "://"
 //
-// Calling cm.Config.WithXXX() will overwrite the generator config
+// # Calling cm.Config.WithXXX() will overwrite the generator config
+//
+// Default logger will log to io.Discard
+// Attach your own if you need via
+//
+//	WithLogger(l log.ILogger) *ConfigManager
 func New(ctx context.Context) *ConfigManager {
 	cm := &ConfigManager{}
 	cm.Config = config.NewConfig()
 	cm.generator = generator.NewGenerator(ctx).WithConfig(cm.Config)
+	cm.logger = log.New(io.Discard)
 	return cm
+}
+
+func (c *ConfigManager) WithLogger(l log.ILogger) *ConfigManager {
+	c.logger = l
+	return c
 }
 
 // GeneratorConfig
@@ -86,6 +101,7 @@ func (c *ConfigManager) RetrieveWithInputReplaced(input string) (string, error) 
 			return "", fmt.Errorf("%w\n%v", ErrEnvSubst, err)
 		}
 	}
+
 	m, err := c.retrieve(FindTokens(input))
 
 	if err != nil {
@@ -95,23 +111,29 @@ func (c *ConfigManager) RetrieveWithInputReplaced(input string) (string, error) 
 	return replaceString(m, input), nil
 }
 
-func (c *ConfigManager) DiscoverTokens(input string) []string {
-	tokens := []string{}
-	// termChar := `[^\'\"\s\n\\\,\:\@]` // :\@\?\/
-	// (?:[^\'\"\\\,\:\@\&\s]|(?:[^/?]))+
-	for k := range config.VarPrefix {
-		re := regexp.MustCompile(regexp.QuoteMeta(string(k)+c.Config.TokenSeparator()) + `(?:[^'"\\,:@&\s/]|/(?:[^?]|$))+`)
-		// re := regexp.MustCompile(regexp.QuoteMeta(string(k)+c.Config.TokenSeparator()) + `(?:[^\'\"\s\n\\\,:@&]|(?:[^/?]))+`)
-		matches := re.FindAllString(input, -1)
-		tokens = append(tokens, matches...)
+var ErrTokenDiscovery = errors.New("failed to discover tokens")
+
+func (c *ConfigManager) DiscoverTokens(input string) ([]config.ParsedTokenConfig, error) {
+	lexerSource := lexer.Source{FileName: "", FullPath: "", Input: input}
+	l := lexer.New(lexerSource, *c.Config)
+	p := parser.New(l, c.Config).WithLogger(c.logger)
+	parsed, errs := p.Parse()
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("%w in input (%s) with errors: %q", ErrTokenDiscovery, input[0:min(len(input), 25)], errs)
 	}
-	return tokens
+
+	pt := []config.ParsedTokenConfig{}
+	for _, prsdToken := range parsed {
+		pt = append(pt, prsdToken.ParsedToken)
+	}
+	return pt, nil
 }
 
 // FindTokens extracts all replaceable tokens
 // from a given input string
 //
-//	Deprecated: FindTokens relies on Regex. Use DiscoverTokens
+//	Deprecated: FindTokens relies on Regex.
+//	Use func (c *ConfigManager) DiscoverTokens(input string) []*config.ParsedTokenConfig
 func FindTokens(input string) []string {
 	tokens := []string{}
 	for k := range config.VarPrefix {

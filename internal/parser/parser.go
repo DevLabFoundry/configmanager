@@ -13,8 +13,8 @@ import (
 	"github.com/a8m/envsubst"
 )
 
-func wrapErr(file string, line, position int, etyp error) error {
-	return fmt.Errorf("\n - [%s:%d:%d] %w", file, line, position, etyp)
+func wrapErr(incompleteToken string, line, position int, etyp error) error {
+	return fmt.Errorf("\n- token: (%s) on line: %d column: %d] %w", incompleteToken, line, position, etyp)
 }
 
 var (
@@ -124,8 +124,10 @@ func (p *Parser) peekTokenIs(t config.TokenType) bool {
 func (p *Parser) peekTokenIsEnd() bool {
 	endTokens := map[config.TokenType]bool{
 		config.AT_SIGN: true, config.QUESTION_MARK: true, config.COLON: true,
-		config.DOUBLE_QUOTE: true, config.SINGLE_QUOTE: true,
-		config.NEW_LINE: true, config.SLASH_QUESTION_MARK: true,
+		config.SLASH_QUESTION_MARK: true, config.EOF: true,
+		// traditional ends of tokens
+		config.DOUBLE_QUOTE: true, config.SINGLE_QUOTE: true, config.SPACE: true,
+		config.NEW_LINE: true,
 	}
 	return endTokens[p.peekToken.Type]
 }
@@ -147,8 +149,18 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 
 	// should exit the loop if no end doc tag found
 	notFoundEnd := true
+
 	// stop on end of file
 	for !p.peekTokenIs(config.EOF) {
+		// This is the target state when there is an optional token wrapping
+		// 	{{ IMP://path }}
+		if p.peekTokenIs(config.END_CONFIGMANAGER_TOKEN) {
+			notFoundEnd = false
+			fullToken += p.curToken.Literal
+			sanitizedToken += p.curToken.Literal
+			stmt.EndToken = p.curToken
+			break
+		}
 
 		// when next token is another token
 		// i.e. the tokens are adjacent
@@ -162,6 +174,9 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 
 		// reached the end of a potential token
 		if p.peekTokenIsEnd() {
+			// when the next token is EOF
+			// we want set the current token as both the full and sanitized
+			// the current lexer token is the entire configmanager token
 			notFoundEnd = false
 			fullToken += p.curToken.Literal
 			sanitizedToken += p.curToken.Literal
@@ -175,10 +190,8 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 		// everything is token path until (if any key separator exists)
 		// check key separator this marks the end of a normal token path
 		if p.currentTokenIs(config.CONFIGMANAGER_TOKEN_KEY_PATH_SEPARATOR) {
-			// advance to next token i.e. start of the path separator
-			p.nextToken()
 			if err := p.buildKeyPathSeparator(configManagerToken); err != nil {
-				p.errors = append(p.errors, err)
+				p.errors = append(p.errors, wrapErr(fullToken, currentToken.Line, currentToken.Column, err))
 				return nil
 			}
 			notFoundEnd = false
@@ -190,19 +203,31 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 		// check metadata there can be a metadata bracket `[key=val,k1=v2]`
 		if p.currentTokenIs(config.BEGIN_META_CONFIGMANAGER_TOKEN) {
 			if err := p.buildMetadata(configManagerToken); err != nil {
-				p.errors = append(p.errors, err)
+				p.errors = append(p.errors, wrapErr(fullToken, currentToken.Line, currentToken.Column, err))
 				return nil
 			}
 			notFoundEnd = false
 			break
 		}
+
 		sanitizedToken += p.curToken.Literal
 		fullToken += p.curToken.Literal
+
+		// when the next token is EOF
+		// we want set the current token
+		// else it would be lost once the parser is advanced below
 		p.nextToken()
+		if p.peekTokenIs(config.EOF) {
+			notFoundEnd = false
+			fullToken += p.curToken.Literal
+			sanitizedToken += p.curToken.Literal
+			stmt.EndToken = p.curToken
+			break
+		}
 	}
 
 	if notFoundEnd {
-		p.errors = append(p.errors, wrapErr(currentToken.Source.File, currentToken.Line, currentToken.Column, ErrNoEndTagFound))
+		p.errors = append(p.errors, wrapErr(fullToken, currentToken.Line, currentToken.Column, ErrNoEndTagFound))
 		return nil
 	}
 
@@ -214,9 +239,20 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 
 // buildKeyPathSeparator already advanced to the first token
 func (p *Parser) buildKeyPathSeparator(configManagerToken *config.ParsedTokenConfig) error {
+	// advance to next token i.e. post the path separator
+	p.nextToken()
 	keyPath := ""
+	if p.peekTokenIs(config.EOF) {
+		// if the next token EOF we set the path as current token and exit
+		// otherwise we would never hit the below loop
+		configManagerToken.WithKeyPath(p.curToken.Literal)
+		return nil
+	}
 	for !p.peekTokenIs(config.EOF) {
 		if p.peekTokenIs(config.BEGIN_META_CONFIGMANAGER_TOKEN) {
+			// add current token to the keysPath and move onto the metadata
+			keyPath += p.curToken.Literal
+			p.nextToken()
 			if err := p.buildMetadata(configManagerToken); err != nil {
 				return err
 			}
@@ -230,17 +266,19 @@ func (p *Parser) buildKeyPathSeparator(configManagerToken *config.ParsedTokenCon
 		keyPath += p.curToken.Literal
 		p.nextToken()
 	}
-	// p.nextToken()
 	configManagerToken.WithKeyPath(keyPath)
 	return nil
 }
 
+var ErrMetadataEmpty = errors.New("emtpy metadata")
+
 // buildMetadata adds metadata to the ParsedTokenConfig
 func (p *Parser) buildMetadata(configManagerToken *config.ParsedTokenConfig) error {
-	// inLoop := true
-	// errNoClose := fmt.Errorf("%w, metadata string has no closing", ErrNoEndTagFound)
 	metadata := ""
 	found := false
+	if p.peekTokenIs(config.END_META_CONFIGMANAGER_TOKEN) {
+		return fmt.Errorf("%w, metadata brackets must include at least one set of key=value pairs", ErrMetadataEmpty)
+	}
 	p.nextToken()
 	for !p.peekTokenIs(config.EOF) {
 		if p.peekTokenIsEnd() {

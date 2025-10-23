@@ -12,9 +12,11 @@ var nonText = map[string]bool{
 	// separators
 	" ": true, "\n": true, "\r": true, "\t": true,
 	"=": true, ".": true, ",": true, "|": true, "?": true, "/": true, "@": true, ":": true,
-	"]": true, "[": true,
+	"]": true, "[": true, "'": true, "\"": true,
 	// initial chars of potential identifiers
-	// TODO: when a new implementation is added we should add it here
+	// this forces the lexer to not treat at as TEXT
+	// and enter the switch statement of the state machine
+	// NOTE: when a new implementation is added we should add it here
 	// AWS|AZure...
 	"A": true,
 	// VAULT (HashiCorp)
@@ -66,9 +68,10 @@ func (l *Lexer) NextToken() config.Token {
 	// identify the dynamically selected key separator
 	case l.keySeparator:
 		tok = config.Token{Type: config.CONFIGMANAGER_TOKEN_KEY_PATH_SEPARATOR, Literal: string(l.ch)}
+	// Specific cases for BEGIN_CONFIGMANAGER_TOKEN possibilities
 	case 'A':
-		// AWS store types
 		if l.peekChar() == 'W' {
+			// AWS store types
 			l.readChar()
 			if found, literal, imp := l.peekIsBeginOfToken([]config.ImplementationPrefix{config.SecretMgrPrefix, config.ParamStorePrefix}, "AW"); found {
 				tok = config.Token{Type: config.BEGIN_CONFIGMANAGER_TOKEN, Literal: literal, ImpPrefix: imp}
@@ -76,8 +79,8 @@ func (l *Lexer) NextToken() config.Token {
 				// it is not a marker AW as text
 				tok = config.Token{Type: config.TEXT, Literal: "AW"}
 			}
-			// Azure Store Types
 		} else if l.peekChar() == 'Z' {
+			// Azure Store Types
 			l.readChar()
 			if found, literal, imp := l.peekIsBeginOfToken([]config.ImplementationPrefix{config.AzKeyVaultSecretsPrefix, config.AzTableStorePrefix, config.AzAppConfigPrefix}, "AZ"); found {
 				tok = config.Token{Type: config.BEGIN_CONFIGMANAGER_TOKEN, Literal: literal, ImpPrefix: imp}
@@ -89,6 +92,7 @@ func (l *Lexer) NextToken() config.Token {
 			tok = config.Token{Type: config.TEXT, Literal: "A"}
 		}
 	case 'G':
+		// GCP TOKENS
 		if l.peekChar() == 'C' {
 			l.readChar()
 			if found, literal, imp := l.peekIsBeginOfToken([]config.ImplementationPrefix{config.GcpSecretsPrefix}, "GC"); found {
@@ -101,18 +105,20 @@ func (l *Lexer) NextToken() config.Token {
 			tok = config.Token{Type: config.TEXT, Literal: "G"}
 		}
 	case 'V':
+		// HASHI VAULT Tokens
 		if l.peekChar() == 'A' {
 			l.readChar()
 			if found, literal, imp := l.peekIsBeginOfToken([]config.ImplementationPrefix{config.HashicorpVaultPrefix}, "VA"); found {
 				tok = config.Token{Type: config.BEGIN_CONFIGMANAGER_TOKEN, Literal: literal, ImpPrefix: imp}
 			} else {
-				// it is not a marker AW as text
+				// it is not a marker VA as text
 				tok = config.Token{Type: config.TEXT, Literal: "VA"}
 			}
 		} else {
 			tok = config.Token{Type: config.TEXT, Literal: "V"}
 		}
 	case 'U':
+		// UNKNOWN
 		if l.peekChar() == 'N' {
 			l.readChar()
 			if found, literal, imp := l.peekIsBeginOfToken([]config.ImplementationPrefix{config.UnknownPrefix}, "UN"); found {
@@ -151,6 +157,10 @@ func (l *Lexer) NextToken() config.Token {
 		tok = config.Token{Type: config.AT_SIGN, Literal: "@"}
 	case ':':
 		tok = config.Token{Type: config.COLON, Literal: ":"}
+	case '"':
+		tok = config.Token{Type: config.DOUBLE_QUOTE, Literal: "\""}
+	case '\'':
+		tok = config.Token{Type: config.SINGLE_QUOTE, Literal: "'"}
 	case '\n':
 		l.line = l.line + 1
 		l.column = 0 // reset column count
@@ -164,7 +174,6 @@ func (l *Lexer) NextToken() config.Token {
 	// case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 	// 	'B', 'C', 'D', 'E', 'F', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'W', 'X', 'Y', 'Z',
 	// 	'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z':
-
 	default:
 		if isText(l.ch) {
 			tok.Literal = l.readText()

@@ -95,63 +95,13 @@ func (c *GenVars) Config() *config.GenVarsConfig {
 	return &c.config
 }
 
-// ParsedMap is the internal working object definition and
-// the return type if results are not flushed to file
-type ParsedMap map[string]any
-
-func (pm ParsedMap) MapKeys() (keys []string) {
-	for k := range pm {
-		keys = append(keys, k)
-	}
-	return
-}
-
-type tokenMapSafe struct {
-	mu       *sync.Mutex
-	tokenMap ParsedMap
-}
-
-func (tms *tokenMapSafe) getTokenMap() ParsedMap {
-	tms.mu.Lock()
-	defer tms.mu.Unlock()
-	return tms.tokenMap
-}
-
-func (tms *tokenMapSafe) addKeyVal(key *config.ParsedTokenConfig, val string) {
-	tms.mu.Lock()
-	defer tms.mu.Unlock()
-	// NOTE: still use the metadata in the key
-	// there could be different versions / labels for the same token and hence different values
-	// However the JSONpath look up
-	tms.tokenMap[key.String()] = keySeparatorLookup(key, val)
-}
-
-type rawTokenMap struct {
-	mu       sync.Mutex
-	tokenMap map[string]*config.ParsedTokenConfig
-}
-
-func newRawTokenMap() *rawTokenMap {
-	return &rawTokenMap{mu: sync.Mutex{}, tokenMap: map[string]*config.ParsedTokenConfig{}}
-}
-
-func (rtm *rawTokenMap) addToken(name string, parsedToken *config.ParsedTokenConfig) {
-	rtm.mu.Lock()
-	defer rtm.mu.Unlock()
-	rtm.tokenMap[name] = parsedToken
-}
-
-func (rtm *rawTokenMap) mapOfToken() map[string]*config.ParsedTokenConfig {
-	rtm.mu.Lock()
-	defer rtm.mu.Unlock()
-	return rtm.tokenMap
-}
-
 // Generate generates a k/v map of the tokens with their corresponding secret/paramstore values
 // the standard pattern of a token should follow a path like string
+//
+// Called only from a slice of tokens
 func (c *GenVars) Generate(tokens []string) (ParsedMap, error) {
 
-	rtm := newRawTokenMap()
+	rtm := NewRawTokenConfig()
 	for _, token := range tokens {
 		lexerSource := lexer.Source{FileName: token, FullPath: "", Input: token}
 		l := lexer.New(lexerSource, c.config)
@@ -162,7 +112,7 @@ func (c *GenVars) Generate(tokens []string) (ParsedMap, error) {
 			continue
 		}
 		for _, prsdToken := range parsed {
-			rtm.addToken(token, &prsdToken.ParsedToken)
+			rtm.AddToken(token, &prsdToken.ParsedToken)
 		}
 	}
 	// pass in default initialised retrieveStrategy
@@ -187,8 +137,10 @@ func IsParsed(v any, trm ParsedMap) bool {
 // initiates groutines with fixed size channel map
 // to capture responses and errors
 // generates ParsedMap which includes
-func (c *GenVars) generate(rawMap *rawTokenMap) error {
-	rtm := rawMap.mapOfToken()
+//
+// TODO: change this slightly
+func (c *GenVars) generate(rawMap *RawTokenConfig) error {
+	rtm := rawMap.RawTokenMap()
 	if len(rtm) < 1 {
 		c.Logger.Debug("no replaceable tokens found in input")
 		return nil
