@@ -172,9 +172,8 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 			break
 		}
 
-		// reached the end of a potential token
+		// reached the end of token
 		if p.peekTokenIsEnd() {
-			// when the next token is EOF
 			// we want set the current token as both the full and sanitized
 			// the current lexer token is the entire configmanager token
 			notFoundEnd = false
@@ -189,6 +188,8 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 		//
 		// everything is token path until (if any key separator exists)
 		// check key separator this marks the end of a normal token path
+		//
+		// keyLookup and Metadata are optional - is always specified in that order
 		if p.currentTokenIs(config.CONFIGMANAGER_TOKEN_KEY_PATH_SEPARATOR) {
 			if err := p.buildKeyPathSeparator(configManagerToken); err != nil {
 				p.errors = append(p.errors, wrapErr(fullToken, currentToken.Line, currentToken.Column, err))
