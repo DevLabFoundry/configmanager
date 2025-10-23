@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/lexer"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
-	"github.com/DevLabFoundry/configmanager/v2/internal/parser"
-	"github.com/DevLabFoundry/configmanager/v2/internal/strategy"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/lexer"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/parser"
+	"github.com/DevLabFoundry/configmanager/v3/internal/strategy"
 	"github.com/spyzhov/ajson"
 )
 

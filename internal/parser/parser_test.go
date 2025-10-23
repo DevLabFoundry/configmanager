@@ -5,11 +5,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/lexer"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
-	"github.com/DevLabFoundry/configmanager/v2/internal/parser"
-	"github.com/DevLabFoundry/configmanager/v2/internal/store"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/lexer"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/parser"
+	"github.com/DevLabFoundry/configmanager/v3/internal/store"
 )
 
 var lexerSource = lexer.Source{FileName: "bar", FullPath: "/foo/bar"}

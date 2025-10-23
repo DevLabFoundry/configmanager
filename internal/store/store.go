@@ -3,7 +3,7 @@ package store
 import (
 	"errors"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 )
 
 const implementationNetworkErr string = "implementation %s error: %v for token: %s"

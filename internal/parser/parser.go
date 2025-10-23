@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/lexer"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/lexer"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 
 	"github.com/a8m/envsubst"
 )

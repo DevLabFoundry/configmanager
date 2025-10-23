@@ -3,7 +3,7 @@ package generator
 import (
 	"sync"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 )
 
 // ParsedMap is the internal working object definition and

@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/cmdutils"
+	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
 	"github.com/spf13/cobra"
 )
 

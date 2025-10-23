@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/DevLabFoundry/configmanager/v2"
-	"github.com/DevLabFoundry/configmanager/v2/generator"
-	"github.com/DevLabFoundry/configmanager/v2/internal/cmdutils"
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3"
+	"github.com/DevLabFoundry/configmanager/v3/generator"
+	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/spf13/cobra"
 )
 

@@ -4,7 +4,7 @@
 package lexer
 
 import (
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 )
 
 // nonText characters captures all character sets that are _not_ assignable to TEXT

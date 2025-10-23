@@ -1,4 +1,4 @@
-module github.com/DevLabFoundry/configmanager/v2
+module github.com/DevLabFoundry/configmanager/v3
 
 go 1.25.1
 

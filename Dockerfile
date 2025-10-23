@@ -10,7 +10,7 @@ WORKDIR /app
 
 COPY ./ /app
 RUN CGO_ENABLED=0 go build -mod=readonly -buildvcs=false \
-    -ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Version=${Version}\" -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Revision=${Revision}\" -extldflags -static" \
+    -ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v3/cmd/configmanager.Version=${Version}\" -X \"github.com/DevLabFoundry/configmanager/v3/cmd/configmanager.Revision=${Revision}\" -extldflags -static" \
     -o bin/configmanager cmd/main.go
 
 FROM docker.io/alpine:3

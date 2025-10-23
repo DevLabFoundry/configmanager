@@ -53,7 +53,7 @@ tasks:
       - |
         mkdir -p .deps
         unset GOTOOLCHAIN
-        ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Revision=${REVISION}\" -extldflags -static"
+        ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v3/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/v3/cmd/configmanager.Revision=${REVISION}\" -extldflags -static"
         GOPATH=/eirctl/.deps GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false -ldflags="$ldflags" \
         -o ./dist/configmanager-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX} ./cmd
         echo "---"

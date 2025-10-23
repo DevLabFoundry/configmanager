@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/v2/generator"
-	"github.com/DevLabFoundry/configmanager/v2/internal/cmdutils"
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	log "github.com/DevLabFoundry/configmanager/v2/internal/log"
-	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/v3/generator"
+	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	log "github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
 	"github.com/spf13/cobra"
 )
 

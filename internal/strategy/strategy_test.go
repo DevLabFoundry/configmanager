@@ -7,11 +7,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	log "github.com/DevLabFoundry/configmanager/v2/internal/log"
-	"github.com/DevLabFoundry/configmanager/v2/internal/store"
-	"github.com/DevLabFoundry/configmanager/v2/internal/strategy"
-	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	log "github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/store"
+	"github.com/DevLabFoundry/configmanager/v3/internal/strategy"
+	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
 	"github.com/go-test/deep"
 )
 

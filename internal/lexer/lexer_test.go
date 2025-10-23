@@ -3,8 +3,8 @@ package lexer_test
 import (
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/lexer"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/lexer"
 )
 
 func Test_Lexer_NextToken(t *testing.T) {
