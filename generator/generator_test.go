@@ -11,7 +11,7 @@ import (
 	"github.com/DevLabFoundry/configmanager/v2/internal/store"
 	"github.com/DevLabFoundry/configmanager/v2/internal/strategy"
 	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
-	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/v2/generator"
 )
 
 type mockGenerate struct {

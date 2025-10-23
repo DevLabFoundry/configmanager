@@ -13,7 +13,7 @@ import (
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
 	"github.com/DevLabFoundry/configmanager/v2/internal/log"
-	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/v2/generator"
 	"github.com/spf13/cobra"
 )
 

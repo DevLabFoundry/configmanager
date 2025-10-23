@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DevLabFoundry/configmanager/v2/generator"
 	"github.com/DevLabFoundry/configmanager/v2/internal/cmdutils"
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
 	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
-	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
 )
 
 func postprocessorHelper(t *testing.T) {

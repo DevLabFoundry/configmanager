@@ -96,7 +96,8 @@ func Test_CustomStrategyFuncMap_add_own(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			called := 0
 			genVarsConf := config.NewConfig()
-			token, _ := config.NewToken("AZTABLESTORE://mountPath/token", *genVarsConf)
+			token, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig())
+			token.WithSanitizedToken("mountPath/token")
 
 			var custFunc = func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
 				m := &mockGenerate{"AZTABLESTORE://mountPath/token", "bar", nil}
