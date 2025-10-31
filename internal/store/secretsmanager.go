@@ -55,7 +55,7 @@ func (imp *SecretsMgr) SetToken(token *config.ParsedTokenConfig) {
 	imp.config = storeConf
 }
 
-func (imp *SecretsMgr) Token() (string, error) {
+func (imp *SecretsMgr) Value() (string, error) {
 	imp.logger.Info("Concrete implementation SecretsManager")
 	imp.logger.Debug("SecretsManager Token: %s", imp.token.String())
 

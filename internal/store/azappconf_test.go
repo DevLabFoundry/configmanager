@@ -132,7 +132,7 @@ func Test_AzAppConf_Success(t *testing.T) {
 			}
 
 			impl.WithSvc(tt.mockClient(t))
-			got, err := impl.Token()
+			got, err := impl.Value()
 			if err != nil {
 				if err.Error() != tt.expect {
 					t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)
@@ -182,7 +182,7 @@ func Test_AzAppConf_Error(t *testing.T) {
 				t.Fatal("failed to init AZAPPCONF")
 			}
 			impl.WithSvc(tt.mockClient(t))
-			if _, err := impl.Token(); !errors.Is(err, tt.expect) {
+			if _, err := impl.Value(); !errors.Is(err, tt.expect) {
 				t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)
 			}
 		})

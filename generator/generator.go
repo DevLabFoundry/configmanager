@@ -3,10 +3,11 @@ package generator
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/DevLabFoundry/configmanager/v3/internal/config"
@@ -14,7 +15,6 @@ import (
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/DevLabFoundry/configmanager/v3/internal/parser"
 	"github.com/DevLabFoundry/configmanager/v3/internal/strategy"
-	"github.com/spyzhov/ajson"
 )
 
 // GenVars is the main struct holding the
@@ -28,10 +28,6 @@ type GenVars struct {
 	strategy strategy.StrategyFuncMap
 	ctx      context.Context
 	config   config.GenVarsConfig
-	// rawMap is the internal object that holds the values
-	// of original token => retrieved value - decrypted in plain text
-	// with a mutex RW locker
-	rawMap tokenMapSafe //ParsedMap
 }
 
 type Opts func(*GenVars)
@@ -45,15 +41,10 @@ func NewGenerator(ctx context.Context, opts ...Opts) *GenVars {
 }
 
 func newGenVars(ctx context.Context, opts ...Opts) *GenVars {
-	m := make(ParsedMap)
 	conf := config.NewConfig()
 	g := &GenVars{
 		Logger: log.New(io.Discard),
-		rawMap: tokenMapSafe{
-			tokenMap: m,
-			mu:       &sync.Mutex{},
-		},
-		ctx: ctx,
+		ctx:    ctx,
 		// return using default config
 		config: *conf,
 	}
@@ -99,126 +90,169 @@ func (c *GenVars) Config() *config.GenVarsConfig {
 // the standard pattern of a token should follow a path like string
 //
 // Called only from a slice of tokens
-func (c *GenVars) Generate(tokens []string) (ParsedMap, error) {
+func (c *GenVars) Generate(tokens []string) (ReplacedToken, error) {
 
-	rtm := NewRawTokenConfig()
-	for _, token := range tokens {
-		lexerSource := lexer.Source{FileName: token, FullPath: "", Input: token}
-		l := lexer.New(lexerSource, c.config)
-		p := parser.New(l, &c.config).WithLogger(log.New(os.Stderr))
-		parsed, errs := p.Parse()
-		if len(errs) > 0 {
-			c.Logger.Info(fmt.Sprintf("%v", errs))
-			continue
-		}
-		for _, prsdToken := range parsed {
-			rtm.AddToken(token, &prsdToken.ParsedToken)
-		}
-	}
-	// pass in default initialised retrieveStrategy
-	// input should be
-	if err := c.generate(rtm); err != nil {
+	ntm, err := c.DiscoverTokens(strings.Join(tokens, "\n"))
+	if err != nil {
 		return nil, err
 	}
-	return c.rawMap.getTokenMap(), nil
+
+	// pass in default initialised retrieveStrategy
+	// input should be
+	rt, err := c.generate(ntm)
+	if err != nil {
+		return nil, err
+	}
+	return rt, nil
+}
+
+var ErrTokenDiscovery = errors.New("failed to discover tokens")
+
+// DiscoverToken generates a k/v map of the tokens with their corresponding secret/paramstore values
+// the standard pattern of a token should follow a path like string
+//
+// Called only from a slice of tokens
+func (c *GenVars) DiscoverTokens(text string) (NormalizedTokenSafe, error) {
+
+	rtm := NewRawTokenConfig()
+
+	lexerSource := lexer.Source{FileName: text[0:min(len(text), 20)], FullPath: "", Input: text}
+	l := lexer.New(lexerSource, c.config)
+	p := parser.New(l, &c.config).WithLogger(log.New(os.Stderr))
+	parsed, errs := p.Parse()
+	if len(errs) > 0 {
+		return NormalizedTokenSafe{}, fmt.Errorf("%w in input (%s) with errors: %q", ErrTokenDiscovery, text[0:min(len(text), 25)], errs)
+	}
+	for _, prsdToken := range parsed {
+		rtm.AddToken(prsdToken.ParsedToken.String(), &prsdToken.ParsedToken)
+	}
+	return c.NormalizeRawToken(rtm), nil
 }
 
 // IsParsed will try to parse the return found string into
 // map[string]string
 // If found it will convert that to a map with all keys uppercased
 // and any characters
-func IsParsed(v any, trm ParsedMap) bool {
+func IsParsed(v any, trm ReplacedToken) bool {
 	str := fmt.Sprint(v)
 	err := json.Unmarshal([]byte(str), &trm)
 	return err == nil
 }
 
-// generate checks if any tokens found
-// initiates groutines with fixed size channel map
-// to capture responses and errors
-// generates ParsedMap which includes
+// generate initiates waitGroup to handle 1 or more normalized network calls concurrently to the underlying stores
 //
-// TODO: change this slightly
-func (c *GenVars) generate(rawMap *RawTokenConfig) error {
-	rtm := rawMap.RawTokenMap()
-	if len(rtm) < 1 {
+// Captures the response/error in TokenResponse struct
+// It then denormalizes the NormalizedTokenSafe back to a ReplacedToken map
+// which stores the values for each token to be returned to the caller
+func (c *GenVars) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
+	if len(ntm.normalizedTokenMap) < 1 {
 		c.Logger.Debug("no replaceable tokens found in input")
-		return nil
+		return nil, nil
 	}
 
-	tokenCount := len(rtm)
-	outCh := make(chan *strategy.TokenResponse, tokenCount)
+	wg := &sync.WaitGroup{}
 
-	// TODO: initialise the singleton serviceContainer
-	// pass into each goroutine
-	for _, parsedToken := range rtm {
-		token := parsedToken // safe closure capture
-		// take value from config allocation on a per iteration basis
-		go func() {
-			s := strategy.New(c.config, c.Logger, strategy.WithStrategyFuncMap(c.strategy))
-			storeStrategy, err := s.SelectImplementation(c.ctx, token)
+	s := strategy.New(c.config, c.Logger, strategy.WithStrategyFuncMap(c.strategy))
+
+	// safe read of normalized token map
+	// this will ensure that we are minimizing
+	// the number of network calls to each underlying store
+	for _, prsdTkn := range ntm.GetMap() {
+		if len(prsdTkn.parsedTokens) == 0 {
+			// TODO: err type this
+			return nil, fmt.Errorf("no tokens assigned to parsedTokens slice")
+		}
+		token := prsdTkn.parsedTokens[0]
+		wg.Go(func() {
+			prsdTkn.resp = &strategy.TokenResponse{}
+			storeStrategy, err := s.GetImplementation(c.ctx, token)
 			if err != nil {
-				outCh <- &strategy.TokenResponse{Err: err}
+				prsdTkn.resp.Err = err
 				return
 			}
-			outCh <- s.RetrieveByToken(c.ctx, storeStrategy, token)
-		}()
+			prsdTkn.resp = strategy.ExchangeToken(storeStrategy, token)
+		})
 	}
 
-	// Fan-in: receive results with pure select
-	received := 0
-	for received < tokenCount {
-		select {
-		case cr := <-outCh:
-			if cr == nil {
-				continue // defensive (shouldn't happen)
-			}
-			c.Logger.Debug("cro: %+v", cr)
-			if cr.Err != nil {
-				c.Logger.Debug("cr.err %v, for token: %s", cr.Err, cr.Key())
-			} else {
-				c.rawMap.addKeyVal(cr.Key(), cr.Value())
-			}
-			received++
-		case <-c.ctx.Done():
-			c.Logger.Debug("context done: %v", c.ctx.Err())
-			return c.ctx.Err() // propagate context error (cancel/timeout)
+	wg.Wait()
+
+	// now we fan out the normalized value to ReplacedToken map
+	// this will ensure all found tokens will have a value assigned to them
+	replacedToken := make(ReplacedToken)
+	for _, r := range ntm.GetMap() {
+		if r == nil {
+			// defensive as this shouldn't happen
+			continue
+		}
+		if r.resp.Err != nil {
+			c.Logger.Debug("cr.err %v, for token: %s", r.resp.Err, r.resp.Key().String())
+			continue
+		}
+		for _, originalToken := range r.parsedTokens {
+			replacedToken[originalToken.String()] = keySeparatorLookup(originalToken, r.resp.Value())
 		}
 	}
-	return nil
+	return replacedToken, nil
 }
 
-// keySeparatorLookup checks if the key contains
-// keySeparator character
-// If it does contain one then it tries to parse
-func keySeparatorLookup(key *config.ParsedTokenConfig, val string) string {
-	// key has separator
-	k := key.LookupKeys()
-	if k == "" {
-		// c.logger.Info("no keyseparator found")
-		return val
-	}
+// NormalizedToken represents the struct after all the possible tokens
+// were merged into the lowest commmon denominator.
+// The idea is to minimize the number of networks calls to the underlying `store` Implementations
+//
+// The merging is based on the implemenentation and sanitized token being the same,
+// if the token contains metadata then it must be
+//
+// # Merging strategy
+//
+// Same Prefix + Same SanitisedToken && No Metadata
+type NormalizedToken struct {
+	// all the tokens that can be used to do a replacement
+	parsedTokens []*config.ParsedTokenConfig
+	// will be assigned post generate
+	resp *strategy.TokenResponse
+	// // configToken is the last assigned full config in the loop if multip
+	// configToken *config.ParsedTokenConfig
+}
 
-	keys, err := ajson.JSONPath([]byte(val), fmt.Sprintf("$..%s", k))
-	if err != nil {
-		// c.logger.Debug("unable to parse as json object %v", err.Error())
-		return val
-	}
+func (n *NormalizedToken) WithParsedToken(v *config.ParsedTokenConfig) *NormalizedToken {
+	n.parsedTokens = append(n.parsedTokens, v)
+	return n
+}
 
-	if len(keys) == 1 {
-		v := keys[0]
-		if v.Type() == ajson.String {
-			str, err := strconv.Unquote(fmt.Sprintf("%v", v))
-			if err != nil {
-				// c.logger.Debug("unable to unquote value: %v returning as is", v)
-				return fmt.Sprintf("%v", v)
+// NormalizedTokenSafe is the map of lowest common denominators
+// by token.Keypathless or token.String (full token) if metadata is included
+type NormalizedTokenSafe struct {
+	mu                 *sync.Mutex
+	normalizedTokenMap map[string]*NormalizedToken
+}
+
+func (n NormalizedTokenSafe) GetMap() map[string]*NormalizedToken {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return n.normalizedTokenMap
+}
+
+func (c *GenVars) NormalizeRawToken(rtm *RawTokenConfig) NormalizedTokenSafe {
+	ntm := NormalizedTokenSafe{mu: &sync.Mutex{}, normalizedTokenMap: make(map[string]*NormalizedToken)}
+
+	for _, r := range rtm.RawTokenMap() {
+		// if a string contains we need to store it uniquely
+		// future improvements might group all the metadata values together
+		if len(r.Metadata()) > 0 {
+			if n, found := ntm.normalizedTokenMap[r.String()]; found {
+				n.WithParsedToken(r)
+				continue
 			}
-			return str
+			ntm.normalizedTokenMap[r.String()] = (&NormalizedToken{}).WithParsedToken(r)
+			continue
 		}
 
-		return fmt.Sprintf("%v", v)
+		if n, found := ntm.normalizedTokenMap[r.Keypathless()]; found {
+			n.WithParsedToken(r)
+			continue
+		}
+		ntm.normalizedTokenMap[r.Keypathless()] = (&NormalizedToken{}).WithParsedToken(r)
+		continue
 	}
-
-	// c.logger.Info("no value found in json using path expression")
-	return ""
+	return ntm
 }

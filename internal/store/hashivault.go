@@ -111,7 +111,7 @@ func (imp *VaultStore) SetToken(token *config.ParsedTokenConfig) {}
 // getTokenValue implements the underlying techonology
 // token retrieval and returns a stringified version
 // of the secret
-func (imp *VaultStore) Token() (string, error) {
+func (imp *VaultStore) Value() (string, error) {
 	imp.logger.Info("%s", "Concrete implementation HashiVault")
 	imp.logger.Info("Getting Secret: %s", imp.token)
 

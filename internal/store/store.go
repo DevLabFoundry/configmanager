@@ -20,6 +20,8 @@ var (
 //
 // Defined on the package for easier re-use across the program
 type Strategy interface {
-	Token() (s string, e error)
+	// Value retrieves the underlying value for the token
+	Value() (s string, e error)
+	// SetToken 
 	SetToken(s *config.ParsedTokenConfig)
 }

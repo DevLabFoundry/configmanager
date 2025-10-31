@@ -13,7 +13,7 @@ import (
 // processes the rawMap and outputs the result
 // depending on cmdline options
 type PostProcessor struct {
-	ProcessedMap generator.ParsedMap
+	ProcessedMap generator.ReplacedToken
 	Config       *config.GenVarsConfig
 	outString    []string
 }
@@ -24,7 +24,7 @@ func (p *PostProcessor) ConvertToExportVar() []string {
 	for k, v := range p.ProcessedMap {
 		rawKeyToken := strings.Split(k, "/") // assumes a path like token was used
 		topLevelKey := rawKeyToken[len(rawKeyToken)-1]
-		trm := generator.ParsedMap{}
+		trm := generator.ReplacedToken{}
 		if parsedOk := generator.IsParsed(v, trm); parsedOk {
 			// if is a map
 			// try look up on key if separator defined
@@ -32,21 +32,21 @@ func (p *PostProcessor) ConvertToExportVar() []string {
 			p.exportVars(normMap)
 			continue
 		}
-		p.exportVars(generator.ParsedMap{topLevelKey: v})
+		p.exportVars(generator.ReplacedToken{topLevelKey: v})
 	}
 	return p.outString
 }
 
 // envVarNormalize
-func (p *PostProcessor) envVarNormalize(pmap generator.ParsedMap) generator.ParsedMap {
-	normalizedMap := make(generator.ParsedMap)
+func (p *PostProcessor) envVarNormalize(pmap generator.ReplacedToken) generator.ReplacedToken {
+	normalizedMap := make(generator.ReplacedToken)
 	for k, v := range pmap {
 		normalizedMap[p.normalizeKey(k)] = v
 	}
 	return normalizedMap
 }
 
-func (p *PostProcessor) exportVars(exportMap generator.ParsedMap) {
+func (p *PostProcessor) exportVars(exportMap generator.ReplacedToken) {
 
 	for k, v := range exportMap {
 		// NOTE: \n line ending is not totally cross platform

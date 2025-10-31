@@ -97,7 +97,7 @@ func Test_AzTableStore_Success(t *testing.T) {
 
 			impl.WithSvc(tt.mockClient(t))
 
-			got, err := impl.Token()
+			got, err := impl.Value()
 			if err != nil {
 				if err.Error() != tt.expect {
 					t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)
@@ -186,7 +186,7 @@ func Test_azstorage_with_value_property(t *testing.T) {
 
 			impl.WithSvc(tt.mockClient(t))
 
-			got, err := impl.Token()
+			got, err := impl.Value()
 			if err != nil {
 				t.Fatalf(testutils.TestPhrase, err.Error(), nil)
 			}
@@ -250,7 +250,7 @@ func Test_AzTableStore_Error(t *testing.T) {
 			}
 
 			impl.WithSvc(tt.mockClient(t))
-			if _, err := impl.Token(); !errors.Is(err, tt.expect) {
+			if _, err := impl.Value(); !errors.Is(err, tt.expect) {
 				t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)
 			}
 		})

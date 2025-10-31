@@ -83,7 +83,7 @@ func (implmt *AzTableStore) SetToken(token *config.ParsedTokenConfig) {}
 //
 // From this point then normal rules of configmanager apply,
 // including keySeperator and lookup.
-func (imp *AzTableStore) Token() (string, error) {
+func (imp *AzTableStore) Value() (string, error) {
 	imp.logger.Info("AzTableSTore Token: %s", imp.token.String())
 	imp.logger.Info("Concrete implementation AzTableSTore")
 

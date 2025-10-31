@@ -72,7 +72,7 @@ func (s *KvScrtStore) WithSvc(svc kvApi) {
 // setToken already happens in AzureKVClient in the constructor
 func (implmt *KvScrtStore) SetToken(token *config.ParsedTokenConfig) {}
 
-func (imp *KvScrtStore) Token() (string, error) {
+func (imp *KvScrtStore) Value() (string, error) {
 	imp.logger.Info("Concrete implementation AzKeyVault Secret")
 	imp.logger.Info("AzKeyVault Token: %s", imp.token.String())
 

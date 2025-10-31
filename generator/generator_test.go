@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 
+	"github.com/DevLabFoundry/configmanager/v3/generator"
 	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/DevLabFoundry/configmanager/v3/internal/store"
 	"github.com/DevLabFoundry/configmanager/v3/internal/strategy"
 	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
-	"github.com/DevLabFoundry/configmanager/v3/generator"
 )
 
 type mockGenerate struct {
@@ -21,7 +22,7 @@ type mockGenerate struct {
 
 func (m *mockGenerate) SetToken(s *config.ParsedTokenConfig) {
 }
-func (m *mockGenerate) Token() (s string, e error) {
+func (m *mockGenerate) Value() (s string, e error) {
 	return m.value, m.err
 }
 
@@ -162,7 +163,7 @@ func Test_IsParsed(t *testing.T) {
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
-			typ := generator.ParsedMap{}
+			typ := generator.ReplacedToken{}
 			got := generator.IsParsed(tt.val, typ)
 			if got != tt.isParsed {
 				t.Errorf(testutils.TestPhraseWithContext, "unexpected IsParsed", got, tt.isParsed)
@@ -171,378 +172,199 @@ func Test_IsParsed(t *testing.T) {
 	}
 }
 
-// import (
-// 	"context"
-// 	"fmt"
-// 	"strings"
-// 	"testing"
+func TestGenVars_NormalizeRawToken(t *testing.T) {
 
-// 	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
-// )
+	t.Run("multiple tokens", func(t *testing.T) {
+		g := generator.NewGenerator(context.TODO())
 
-// var (
-// 	customts   = "___"
-// 	customop   = "/foo"
-// 	standardop = "./app.env"
-// 	standardts = "#"
-// )
+		input := `GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
+			GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|a
+			GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|b
+			GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|c
+			AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
+			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]
+			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|key1
+			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|key2
+			AZKVSECRET:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
+			VAULT:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj`
+		want := []string{"GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
+			"AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
+			"AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]",
+			"AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
+			"AZKVSECRET:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
+			"VAULT:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj"}
+		got, err := g.DiscoverTokens(input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.GetMap()) != len(want) {
+			t.Errorf("got %v wanted %d", len(got.GetMap()), len(want))
+		}
+		for key := range got.GetMap() {
+			if !slices.Contains(want, key) {
+				t.Errorf("got %s, wanted to be included in %v", key, want)
+			}
+		}
+	})
+}
 
-// type fixture struct {
-// 	t  *testing.T
-// 	c  *GenVars
-// 	rs *retrieveStrategy
-// }
+func Test_ConfigManager_DiscoverTokens(t *testing.T) {
+	ttests := map[string]struct {
+		input     string
+		separator string
+		expect    []string
+	}{
+		"multiple tokens in single string": {
+			`Lorem_Ipsum: AWSPARAMSTR:///path/config|foo.user:AWSPARAMSTR:///path/config|password@AWSPARAMSTR:///path/config|foo.endpoint:AWSPARAMSTR:///path/config|foo.port/?someQ=AWSPARAMSTR:///path/queryparam|p1[version=123]&anotherQ=false`,
+			"://",
+			[]string{
+				"AWSPARAMSTR:///path/config",
+				// "AWSPARAMSTR:///path/config|password",
+				// "AWSPARAMSTR:///path/config|foo.endpoint",
+				// "AWSPARAMSTR:///path/config|foo.port",
+				"AWSPARAMSTR:///path/queryparam|p1[version=123]"},
+		},
+		"# tokens in single string": {
+			`Lorem_Ipsum: AWSPARAMSTR#/path/config|foo.user:AWSPARAMSTR#/path/config|password@AWSPARAMSTR#/path/config|foo.endpoint:AWSPARAMSTR#/path/config|foo.port/?someQ=AWSPARAMSTR#/path/queryparam|p1[version=123]&anotherQ=false`,
+			"#",
+			[]string{
+				"AWSPARAMSTR#/path/config",
+				// "AWSPARAMSTR#/path/config|password",
+				// "AWSPARAMSTR#/path/config|foo.endpoint",
+				// "AWSPARAMSTR#/path/config|foo.port",
+				"AWSPARAMSTR#/path/queryparam|p1[version=123]"},
+		},
+		"without leading slash and path like name # tokens in single string": {
+			`Lorem_Ipsum: AWSPARAMSTR#path_config|foo.user:AWSPARAMSTR#path_config|password@AWSPARAMSTR#path_config|foo.endpoint:AWSPARAMSTR#path_config|foo.port/?someQ=AWSPARAMSTR#path_queryparam|p1[version=123]&anotherQ=false`,
+			"#",
+			[]string{
+				"AWSPARAMSTR#path_config",
+				// "AWSPARAMSTR#path_config|password",
+				// "AWSPARAMSTR#path_config|foo.endpoint",
+				// "AWSPARAMSTR#path_config|foo.port",
+				"AWSPARAMSTR#path_queryparam|p1[version=123]"},
+		},
+		// Ensures all previous test cases pass as well
+		"extract from text correctly": {
+			`Where does it come from?
+			Contrary to popular belief,
+			Lorem Ipsum is AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsfl1 <= in middle of sentencenot simply random text.
+			It has roots in a piece of classical Latin literature from 45
+			BC, making it over 2000 years old. Richard McClintock, a Latin professor at
+			 Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, c
+			 onsectetur, from a Lorem Ipsum passage , at the end of line => AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsfl4
+			  and going through the cites of the word in c
+			 lassical literature, discovered the undoubtable source. Lorem Ipsum comes from secti
+			 ons in singles =>'AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsfl2'1.10.32 and 1.10.33 of "de Finibus Bonorum et Malorum" (The Extremes of Good and Evil)
+			 in doubles => "AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsfl3"
+			  by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular
+			  during the  :=> embedded in text RenaissanceAWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsfl5 embedded in text <=:
+			  The first line of Lorem Ipsum, "Lorem ipsum dolor sit amet..", comes from a line in section 1.10.32.`,
+			"://",
+			[]string{
+				"AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsfl1",
+				"AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsfl2",
+				"AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsfl3",
+				"AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsfl4",
+				"AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsfl5",
+			},
+		},
+		"unknown implementation not picked up": {
+			`foo: AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
+				bar: AWSPARAMSTR://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]
+				unknown: GCPPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
+				unknown: GCPSECRETS#/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj`,
+			"://",
+			[]string{
+				"AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
+				"AWSPARAMSTR://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]"},
+		},
+		"all implementations": {
+			`param: AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
+			secretsmgr: AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]
+			gcp: GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
+			vault: VAULT:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
+			som othere strufsd
+			azkv: AZKVSECRET:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj`,
+			"://",
+			[]string{
+				"GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
+				"AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
+				"AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]",
+				"AZKVSECRET:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
+				"VAULT:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj"},
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			config.VarPrefix = map[config.ImplementationPrefix]bool{"AWSPARAMSTR": true}
+			g := generator.NewGenerator(context.TODO())
+			g.Config().WithTokenSeparator(tt.separator)
+			gdt, err := g.DiscoverTokens(tt.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := gdt.GetMap()
 
-// func newFixture(t *testing.T) *fixture {
-// 	f := &fixture{}
-// 	f.t = t
-// 	return f
-// }
+			if len(got) != len(tt.expect) {
+				t.Errorf("wrong nmber of tokens resolved\ngot (%d) want (%d)", len(got), len(tt.expect))
+			}
+			// for _, v := range got {
+			// 	if !slices.Contains(tt.expect, v.String()) {
+			// 		t.Errorf("got (%s) not found in expected slice (%v)", v, tt.expect)
+			// 	}
+			// }
+		})
+	}
+}
 
-// func (f *fixture) configGenVars(op, ts string) {
-// 	conf := NewConfig().WithOutputPath(op).WithTokenSeparator(ts)
-// 	gv := NewGenerator().WithConfig(conf)
-// 	f.rs = newRetrieveStrategy(NewDefatultStrategy(), *conf)
-// 	f.c = gv
-// }
+func Test_Generate_EnsureRaceFree(t *testing.T) {
+	g := generator.NewGenerator(context.TODO())
 
-// func TestGenVarsWithConfig(t *testing.T) {
+	input := `
+fg
+dfg gdfgfdGCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
+GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|a
+GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|b
+GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|c
+ddsffds			AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
+			'AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]'
+			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|key1
+			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|key2
+			AZKVSECRET:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj gdf gdfgdf 
+ dfg gdf gdf gdf
+			fdg dgf dgf
+			VAULT:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj . dfg dfgdf dfg fddf`
 
-// 	f := newFixture(t)
+	g.WithStrategyMap(strategy.StrategyFuncMap{
+		config.GcpSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			m := &mockGenerate{"/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"a":"bar","b":{"key2":"val"},"c":123}`, nil}
+			return m, nil
+		},
+		config.ParamStorePrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			m := &mockGenerate{"/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"a":"bar","b":{"key2":"val"},"c":123}`, nil}
+			return m, nil
+		},
+		config.SecretMgrPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			m := &mockGenerate{"bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"key1":"bar","key2":"val","c":123}`, nil}
+			return m, nil
+		},
+		config.AzKeyVaultSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			m := &mockGenerate{"/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"key1":"bar","key2":"val","c":123}`, nil}
+			return m, nil
+		},
+		config.HashicorpVaultPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			m := &mockGenerate{"/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"key1":"bar","key2":"val","c":123}`, nil}
+			return m, nil
+		},
+	})
 
-// 	f.configGenVars(customop, customts)
-// 	if f.c.config.outpath != customop {
-// 		f.t.Errorf(testutils.TestPhrase, f.c.config.outpath, customop)
-// 	}
-// 	if f.c.config.tokenSeparator != customts {
-// 		f.t.Errorf(testutils.TestPhrase, f.c.config.tokenSeparator, customts)
-// 	}
-// }
+	got, err := g.Generate([]string{input})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 10 {
+		t.Errorf("got %v wanted %d", len(got), 10)
+	}
 
-// func TestStripPrefixNormal(t *testing.T) {
-// 	ttests := map[string]struct {
-// 		prefix         ImplementationPrefix
-// 		token          string
-// 		keySeparator   string
-// 		tokenSeparator string
-// 		f              *fixture
-// 		expect         string
-// 	}{
-// 		"standard azkv":               {AzKeyVaultSecretsPrefix, "AZKVSECRET://vault1/secret2", "|", "://", newFixture(t), "vault1/secret2"},
-// 		"standard hashivault":         {HashicorpVaultPrefix, "VAULT://vault1/secret2", "|", "://", newFixture(t), "vault1/secret2"},
-// 		"custom separator hashivault": {HashicorpVaultPrefix, "VAULT#vault1/secret2", "|", "#", newFixture(t), "vault1/secret2"},
-// 	}
-// 	for name, tt := range ttests {
-// 		t.Run(name, func(t *testing.T) {
-// 			tt.f.configGenVars(tt.keySeparator, tt.tokenSeparator)
-// 			got := tt.f.rs.stripPrefix(tt.token, tt.prefix)
-// 			if got != tt.expect {
-// 				t.Errorf(testutils.TestPhrase, got, tt.expect)
-// 			}
-// 		})
-// 	}
-// }
-
-// func Test_stripPrefix(t *testing.T) {
-// 	f := newFixture(t)
-// 	f.configGenVars(standardop, standardts)
-// 	tests := []struct {
-// 		name   string
-// 		token  string
-// 		prefix ImplementationPrefix
-// 		expect string
-// 	}{
-// 		{
-// 			name:   "simple",
-// 			token:  fmt.Sprintf("%s#/test/123", SecretMgrPrefix),
-// 			prefix: SecretMgrPrefix,
-// 			expect: "/test/123",
-// 		},
-// 		{
-// 			name:   "key appended",
-// 			token:  fmt.Sprintf("%s#/test/123|key", ParamStorePrefix),
-// 			prefix: ParamStorePrefix,
-// 			expect: "/test/123",
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got := f.rs.stripPrefix(tt.token, tt.prefix)
-// 			if tt.expect != got {
-// 				t.Errorf(testutils.TestPhrase, tt.expect, got)
-// 			}
-// 		})
-// 	}
-// }
-
-// func Test_NormaliseMap(t *testing.T) {
-// 	f := newFixture(t)
-// 	f.configGenVars(standardop, standardts)
-// 	tests := []struct {
-// 		name     string
-// 		gv       *GenVars
-// 		input    map[string]any
-// 		expected string
-// 	}{
-// 		{
-// 			name:     "foo->FOO",
-// 			gv:       f.c,
-// 			input:    map[string]any{"foo": "bar"},
-// 			expected: "FOO",
-// 		},
-// 		{
-// 			name:     "num->NUM",
-// 			gv:       f.c,
-// 			input:    map[string]any{"num": 123},
-// 			expected: "NUM",
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got := f.c.envVarNormalize(tt.input)
-// 			for k := range got {
-// 				if k != tt.expected {
-// 					t.Errorf(testutils.TestPhrase, tt.expected, k)
-// 				}
-// 			}
-// 		})
-// 	}
-// }
-
-// func Test_KeyLookup(t *testing.T) {
-// 	f := newFixture(t)
-// 	f.configGenVars(standardop, standardts)
-
-// 	tests := []struct {
-// 		name   string
-// 		gv     *GenVars
-// 		val    string
-// 		key    string
-// 		expect string
-// 	}{
-// 		{
-// 			name:   "lowercase key found in str val",
-// 			gv:     f.c,
-// 			key:    `something|key`,
-// 			val:    `{"key": "11235"}`,
-// 			expect: "11235",
-// 		},
-// 		{
-// 			name:   "lowercase key found in numeric val",
-// 			gv:     f.c,
-// 			key:    `something|key`,
-// 			val:    `{"key": 11235}`,
-// 			expect: "11235",
-// 		},
-// 		{
-// 			name:   "lowercase nested key found in numeric val",
-// 			gv:     f.c,
-// 			key:    `something|key.test`,
-// 			val:    `{"key":{"bar":"foo","test":12345}}`,
-// 			expect: "12345",
-// 		},
-// 		{
-// 			name:   "uppercase key found in val",
-// 			gv:     f.c,
-// 			key:    `something|KEY`,
-// 			val:    `{"KEY": "upposeres"}`,
-// 			expect: "upposeres",
-// 		},
-// 		{
-// 			name:   "uppercase nested key found in val",
-// 			gv:     f.c,
-// 			key:    `something|KEY.TEST`,
-// 			val:    `{"KEY":{"BAR":"FOO","TEST":"upposeres"}}`,
-// 			expect: "upposeres",
-// 		},
-// 		{
-// 			name:   "no key found in val",
-// 			gv:     f.c,
-// 			key:    `something`,
-// 			val:    `{"key": "notfound"}`,
-// 			expect: `{"key": "notfound"}`,
-// 		},
-// 		{
-// 			name:   "nested key not found",
-// 			gv:     f.c,
-// 			key:    `something|KEY.KEY`,
-// 			val:    `{"KEY":{"BAR":"FOO","TEST":"upposeres"}}`,
-// 			expect: "",
-// 		},
-// 		{
-// 			name:   "incorrect json",
-// 			gv:     f.c,
-// 			key:    "something|key",
-// 			val:    `"KEY":{"BAR":"FOO","TEST":"upposeres"}}`,
-// 			expect: `"KEY":{"BAR":"FOO","TEST":"upposeres"}}`,
-// 		},
-// 		{
-// 			name:   "no key provided",
-// 			gv:     f.c,
-// 			key:    "something",
-// 			val:    `{"KEY":{"BAR":"FOO","TEST":"upposeres"}}`,
-// 			expect: `{"KEY":{"BAR":"FOO","TEST":"upposeres"}}`,
-// 		},
-// 		{
-// 			name:   "return json object",
-// 			gv:     f.c,
-// 			key:    "something|key.test",
-// 			val:    `{"key":{"bar":"foo","test": {"key": "default"}}}`,
-// 			expect: `{"key": "default"}`,
-// 		},
-// 		{
-// 			name:   "unescapable string",
-// 			gv:     f.c,
-// 			key:    "something|key.test",
-// 			val:    `{"key":{"bar":"foo","test":"\\\"upposeres\\\""}}`,
-// 			expect: `\"upposeres\"`,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got := f.c.keySeparatorLookup(tt.key, tt.val)
-// 			if got != tt.expect {
-// 				t.Errorf(testutils.TestPhrase, got, tt.expect)
-// 			}
-// 		})
-// 	}
-// }
-
-// type mockRetrieve struct //func(ctx context.Context, impl genVarsStrategy, prefix ImplementationPrefix, in string) chanResp
-// {
-// 	r func(ctx context.Context, impl genVarsStrategy, prefix ImplementationPrefix, in string) ChanResp
-// 	s func(ctx context.Context, prefix ImplementationPrefix, in string, config GenVarsConfig) (genVarsStrategy, error)
-// }
-
-// func (m mockRetrieve) RetrieveByToken(ctx context.Context, impl genVarsStrategy, prefix ImplementationPrefix, in string) ChanResp {
-// 	return m.r(ctx, impl, prefix, in)
-// }
-// func (m mockRetrieve) SelectImplementation(ctx context.Context, prefix ImplementationPrefix, in string, config GenVarsConfig) (genVarsStrategy, error) {
-// 	return m.s(ctx, prefix, in, config)
-// }
-
-// type mockImpl struct {
-// 	token, value string
-// 	err          error
-// }
-
-// func (m *mockImpl) tokenVal(rs *retrieveStrategy) (s string, e error) {
-// 	return m.value, m.err
-// }
-// func (m *mockImpl) setTokenVal(s string) {
-// 	m.token = s
-// }
-
-// func Test_generate_rawmap_of_tokens_mapped_to_values(t *testing.T) {
-// 	ttests := map[string]struct {
-// 		rawMap    func(t *testing.T) map[string]string
-// 		rs        func(t *testing.T) retrieveIface
-// 		expectMap func() map[string]string
-// 	}{
-// 		"success": {
-// 			func(t *testing.T) map[string]string {
-// 				rm := make(map[string]string)
-// 				rm["foo"] = "bar"
-// 				return rm
-// 			},
-// 			func(t *testing.T) retrieveIface {
-// 				return mockRetrieve{
-// 					r: func(ctx context.Context, impl genVarsStrategy, prefix ImplementationPrefix, in string) ChanResp {
-// 						return ChanResp{
-// 							err:   nil,
-// 							value: "bar",
-// 						}
-// 					},
-// 					s: func(ctx context.Context, prefix ImplementationPrefix, in string, config GenVarsConfig) (genVarsStrategy, error) {
-// 						return &mockImpl{"foo", "bar", nil}, nil
-// 					}}
-// 			},
-// 			func() map[string]string {
-// 				rm := make(map[string]string)
-// 				rm["foo"] = "bar"
-// 				return rm
-// 			},
-// 		},
-// 		// as the method swallows errors at the moment this is not very useful
-// 		"error in implementation": {
-// 			func(t *testing.T) map[string]string {
-// 				rm := make(map[string]string)
-// 				rm["foo"] = "bar"
-// 				return rm
-// 			},
-// 			func(t *testing.T) retrieveIface {
-// 				return mockRetrieve{
-// 					r: func(ctx context.Context, impl genVarsStrategy, prefix ImplementationPrefix, in string) ChanResp {
-// 						return ChanResp{
-// 							err: fmt.Errorf("unable to retrieve"),
-// 						}
-// 					},
-// 					s: func(ctx context.Context, prefix ImplementationPrefix, in string, config GenVarsConfig) (genVarsStrategy, error) {
-// 						return &mockImpl{"foo", "bar", nil}, nil
-// 					}}
-// 			},
-// 			func() map[string]string {
-// 				rm := make(map[string]string)
-// 				return rm
-// 			},
-// 		},
-// 		"error in imp selection": {
-// 			func(t *testing.T) map[string]string {
-// 				rm := make(map[string]string)
-// 				rm["foo"] = "bar"
-// 				return rm
-// 			},
-// 			func(t *testing.T) retrieveIface {
-// 				return mockRetrieve{
-// 					r: func(ctx context.Context, impl genVarsStrategy, prefix ImplementationPrefix, in string) ChanResp {
-// 						return ChanResp{
-// 							err: fmt.Errorf("unable to retrieve"),
-// 						}
-// 					},
-// 					s: func(ctx context.Context, prefix ImplementationPrefix, in string, config GenVarsConfig) (genVarsStrategy, error) {
-// 						return nil, fmt.Errorf("implementation not found for input string: %s", in)
-// 					}}
-// 			},
-// 			func() map[string]string {
-// 				rm := make(map[string]string)
-// 				return rm
-// 			},
-// 		},
-// 	}
-// 	for name, tt := range ttests {
-// 		t.Run(name, func(t *testing.T) {
-// 			generator := newGenVars()
-// 			generator.generate(tt.rawMap(t), tt.rs(t))
-// 			got := generator.RawMap()
-// 			if len(got) != len(tt.expectMap()) {
-// 				t.Errorf(testutils.TestPhraseWithContext, "generated raw map did not match", len(got), len(tt.expectMap()))
-// 			}
-// 		})
-// 	}
-// }
-
-// func TestGenerate(t *testing.T) {
-// 	ttests := map[string]struct {
-// 		tokens       func(t *testing.T) []string
-// 		expectLength int
-// 	}{
-// 		"success without correct prefix": {
-// 			func(t *testing.T) []string {
-// 				return []string{"WRONGIMPL://bar-vault/token1", "AZKVNOTSECRET://bar-vault/token1"}
-// 			},
-// 			0,
-// 		},
-// 	}
-// 	for name, tt := range ttests {
-// 		t.Run(name, func(t *testing.T) {
-// 			generator := newGenVars()
-// 			pm, err := generator.Generate(tt.tokens(t))
-// 			if err != nil {
-// 				t.Errorf(testutils.TestPhrase, err.Error(), nil)
-// 			}
-// 			if len(pm) < tt.expectLength {
-// 				t.Errorf(testutils.TestPhrase, len(pm), tt.expectLength)
-// 			}
-// 		})
-// 	}
-// }
+}

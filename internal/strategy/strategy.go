@@ -52,17 +52,21 @@ type strategyFnMap struct {
 	mu      sync.Mutex
 	funcMap StrategyFuncMap
 }
+
 type RetrieveStrategy struct {
+	// mu              *sync.Mutex
 	implementation  store.Strategy
 	config          config.GenVarsConfig
 	strategyFuncMap strategyFnMap
 }
+
 type Opts func(*RetrieveStrategy)
 
 // New
 func New(config config.GenVarsConfig, logger log.ILogger, opts ...Opts) *RetrieveStrategy {
 	rs := &RetrieveStrategy{
-		config:          config,
+		config: config,
+		// mu:              &sync.Mutex{},
 		strategyFuncMap: strategyFnMap{mu: sync.Mutex{}, funcMap: defaultStrategyFuncMap(logger)},
 	}
 	// overwrite or add any options/defaults set above
@@ -79,25 +83,54 @@ func New(config config.GenVarsConfig, logger log.ILogger, opts ...Opts) *Retriev
 // NOTE: this may lead to eventual optional configurations by users
 func WithStrategyFuncMap(funcMap StrategyFuncMap) Opts {
 	return func(rs *RetrieveStrategy) {
+		rs.strategyFuncMap.mu.Lock()
+		defer rs.strategyFuncMap.mu.Unlock()
 		for prefix, implementation := range funcMap {
-			rs.strategyFuncMap.mu.Lock()
-			defer rs.strategyFuncMap.mu.Unlock()
 			rs.strategyFuncMap.funcMap[config.ImplementationPrefix(prefix)] = implementation
 		}
 	}
 }
 
-func (rs *RetrieveStrategy) setImplementation(strategy store.Strategy) {
-	rs.implementation = strategy
+// GetImplementation is a factory method returning the concrete implementation for the retrieval of the token value
+// i.e. facilitating the exchange of the supplied token for the underlying value
+func (rs *RetrieveStrategy) GetImplementation(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+	if token == nil {
+		return nil, fmt.Errorf("unable to get prefix, %w", ErrTokenInvalid)
+	}
+
+	if store, found := rs.strategyFuncMap.funcMap[token.Prefix()]; found {
+		return store(ctx, token)
+	}
+
+	return nil, fmt.Errorf("implementation not found for input string: %s", token)
 }
 
-func (rs *RetrieveStrategy) setTokenVal(s *config.ParsedTokenConfig) {
-	rs.implementation.SetToken(s)
+func ExchangeToken(s store.Strategy, token *config.ParsedTokenConfig) *TokenResponse {
+	cr := &TokenResponse{}
+	cr.Err = nil
+	cr.key = token
+	s.SetToken(token)
+	cr.value, cr.Err = s.Value()
+	return cr
 }
 
-func (rs *RetrieveStrategy) getTokenValue() (string, error) {
-	return rs.implementation.Token()
-}
+// func (rs *RetrieveStrategy) setImplementation(strategy store.Strategy) {
+// 	rs.mu.Lock()
+// 	defer rs.mu.Unlock()
+// 	rs.implementation = strategy
+// }
+
+// func (rs *RetrieveStrategy) setTokenVal(s *config.ParsedTokenConfig) {
+// 	rs.mu.Lock()
+// 	defer rs.mu.Unlock()
+// 	rs.implementation.SetToken(s)
+// }
+
+// func (rs *RetrieveStrategy) getTokenValue() (string, error) {
+// 	rs.mu.Lock()
+// 	defer rs.mu.Unlock()
+// 	return rs.implementation.Token()
+// }
 
 type TokenResponse struct {
 	value string
@@ -111,33 +144,4 @@ func (tr *TokenResponse) Key() *config.ParsedTokenConfig {
 
 func (tr *TokenResponse) Value() string {
 	return tr.value
-}
-
-// retrieveSpecificCh wraps around the specific strategy implementation
-// and publishes results to a channel
-func (rs *RetrieveStrategy) RetrieveByToken(ctx context.Context, impl store.Strategy, tokenConf *config.ParsedTokenConfig) *TokenResponse {
-	cr := &TokenResponse{}
-	cr.Err = nil
-	cr.key = tokenConf
-	rs.setImplementation(impl)
-	rs.setTokenVal(tokenConf)
-	s, err := rs.getTokenValue()
-	if err != nil {
-		cr.Err = err
-		return cr
-	}
-	cr.value = s
-	return cr
-}
-
-func (rs *RetrieveStrategy) SelectImplementation(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-	if token == nil {
-		return nil, fmt.Errorf("unable to get prefix, %w", ErrTokenInvalid)
-	}
-
-	if store, found := rs.strategyFuncMap.funcMap[token.Prefix()]; found {
-		return store(ctx, token)
-	}
-
-	return nil, fmt.Errorf("implementation not found for input string: %s", token)
 }

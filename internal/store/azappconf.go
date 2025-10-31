@@ -82,7 +82,7 @@ func (implmt *AzAppConf) SetToken(token *config.ParsedTokenConfig) {}
 // label can be specified
 // From this point then normal rules of configmanager apply,
 // including keySeperator and lookup.
-func (imp *AzAppConf) Token() (string, error) {
+func (imp *AzAppConf) Value() (string, error) {
 	imp.logger.Info("Concrete implementation AzAppConf")
 	imp.logger.Info("AzAppConf Token: %s", imp.token.String())
 

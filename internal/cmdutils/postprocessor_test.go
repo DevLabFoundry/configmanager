@@ -17,14 +17,14 @@ func postprocessorHelper(t *testing.T) {
 }
 func Test_ConvertToExportVars(t *testing.T) {
 	tests := map[string]struct {
-		rawMap       generator.ParsedMap
+		rawMap       generator.ReplacedToken
 		expectStr    string
 		expectLength int
 	}{
-		"number included":     {generator.ParsedMap{"foo": "BAR", "num": 123}, `export FOO='BAR'`, 2},
-		"strings only":        {generator.ParsedMap{"foo": "BAR", "num": "a123"}, `export FOO='BAR'`, 2},
-		"numbers only":        {generator.ParsedMap{"foo": 123, "num": 456}, `export FOO=123`, 2},
-		"map inside response": {generator.ParsedMap{"map": `{"foo":"bar","baz":"qux"}`, "num": 123}, `export FOO='bar'`, 3},
+		"number included":     {generator.ReplacedToken{"foo": "BAR", "num": 123}, `export FOO='BAR'`, 2},
+		"strings only":        {generator.ReplacedToken{"foo": "BAR", "num": "a123"}, `export FOO='BAR'`, 2},
+		"numbers only":        {generator.ReplacedToken{"foo": 123, "num": 456}, `export FOO=123`, 2},
+		"map inside response": {generator.ReplacedToken{"map": `{"foo":"bar","baz":"qux"}`, "num": 123}, `export FOO='bar'`, 3},
 	}
 
 	for name, tt := range tests {

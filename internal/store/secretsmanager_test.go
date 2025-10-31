@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -59,44 +60,78 @@ func Test_GetSecretMgr(t *testing.T) {
 				})
 			},
 		},
-		// "success with version": {"AWSSECRETS#/token/1[version=123]", "|", "#", tsuccessSecret, func(t *testing.T) secretsMgrApi {
-		// 	return mockSecretsApi(func(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error) {
-		// 		t.Helper()
-		// 		awsSecretsMgrGetChecker(t, params)
-		// 		return &secretsmanager.GetSecretValueOutput{
-		// 			SecretString: &tsuccessSecret,
-		// 		}, nil
-		// 	})
-		// }, config.NewConfig(),
-		// },
-		// "success with binary": {"AWSSECRETS#/token/1", "|", "#", tsuccessSecret, func(t *testing.T) secretsMgrApi {
-		// 	return mockSecretsApi(func(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error) {
-		// 		t.Helper()
-		// 		awsSecretsMgrGetChecker(t, params)
-		// 		return &secretsmanager.GetSecretValueOutput{
-		// 			SecretBinary: []byte(tsuccessSecret),
-		// 		}, nil
-		// 	})
-		// }, config.NewConfig(),
-		// },
-		// "errored": {"AWSSECRETS#/token/1", "|", "#", "unable to retrieve secret", func(t *testing.T) secretsMgrApi {
-		// 	return mockSecretsApi(func(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error) {
-		// 		t.Helper()
-		// 		awsSecretsMgrGetChecker(t, params)
-		// 		return nil, fmt.Errorf("unable to retrieve secret")
-		// 	})
-		// }, config.NewConfig(),
-		// },
-		// "ok but empty": {"AWSSECRETS#/token/1", "|", "#", "", func(t *testing.T) secretsMgrApi {
-		// 	return mockSecretsApi(func(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error) {
-		// 		t.Helper()
-		// 		awsSecretsMgrGetChecker(t, params)
-		// 		return &secretsmanager.GetSecretValueOutput{
-		// 			SecretString: nil,
-		// 		}, nil
-		// 	})
-		// }, config.NewConfig(),
-		// },
+		"success with version": {
+			func() *config.ParsedTokenConfig {
+				tkn, _ := config.NewToken(config.SecretMgrPrefix, *config.NewConfig().WithTokenSeparator("#"))
+				tkn.WithSanitizedToken("/token/1")
+				tkn.WithKeyPath("")
+				tkn.WithMetadata("version=123")
+				return tkn
+			},
+			tsuccessSecret, func(t *testing.T) mockSecretsApi {
+				return mockSecretsApi(func(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error) {
+					t.Helper()
+					awsSecretsMgrGetChecker(t, params)
+					return &secretsmanager.GetSecretValueOutput{
+						SecretString: &tsuccessSecret,
+					}, nil
+				})
+			},
+		},
+		"success with binary": {
+			func() *config.ParsedTokenConfig {
+				tkn, _ := config.NewToken(config.SecretMgrPrefix, *config.NewConfig().WithTokenSeparator("#"))
+				tkn.WithSanitizedToken("/token/1")
+				tkn.WithKeyPath("")
+				tkn.WithMetadata("")
+				return tkn
+			},
+			tsuccessSecret, func(t *testing.T) mockSecretsApi {
+				return mockSecretsApi(func(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error) {
+					t.Helper()
+					awsSecretsMgrGetChecker(t, params)
+					return &secretsmanager.GetSecretValueOutput{
+						SecretBinary: []byte(tsuccessSecret),
+					}, nil
+				})
+			},
+		},
+		"errored": {
+			func() *config.ParsedTokenConfig {
+				// "AWSSECRETS#/token/1", "|", "#",
+				tkn, _ := config.NewToken(config.SecretMgrPrefix, *config.NewConfig().WithTokenSeparator("#"))
+				tkn.WithSanitizedToken("/token/1")
+				tkn.WithKeyPath("")
+				tkn.WithMetadata("")
+				return tkn
+			},
+			"unable to retrieve secret", func(t *testing.T) mockSecretsApi {
+				return mockSecretsApi(func(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error) {
+					t.Helper()
+					awsSecretsMgrGetChecker(t, params)
+					return nil, fmt.Errorf("unable to retrieve secret")
+				})
+			},
+		},
+		"ok but empty": {
+			func() *config.ParsedTokenConfig {
+				// "AWSSECRETS#/token/1", "|", "#",
+				tkn, _ := config.NewToken(config.SecretMgrPrefix, *config.NewConfig().WithTokenSeparator("#"))
+				tkn.WithSanitizedToken("/token/1")
+				tkn.WithKeyPath("")
+				tkn.WithMetadata("version=123")
+				return tkn
+			},
+			"", func(t *testing.T) mockSecretsApi {
+				return mockSecretsApi(func(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error) {
+					t.Helper()
+					awsSecretsMgrGetChecker(t, params)
+					return &secretsmanager.GetSecretValueOutput{
+						SecretString: nil,
+					}, nil
+				})
+			},
+		},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -104,7 +139,7 @@ func Test_GetSecretMgr(t *testing.T) {
 			impl.WithSvc(tt.mockClient(t))
 
 			impl.SetToken(tt.token())
-			got, err := impl.Token()
+			got, err := impl.Value()
 			if err != nil {
 				if err.Error() != tt.expect {
 					t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)

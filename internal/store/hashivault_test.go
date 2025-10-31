@@ -319,7 +319,7 @@ func TestVaultScenarios(t *testing.T) {
 			}
 
 			impl.WithSvc(tt.mockClient(t))
-			got, err := impl.Token()
+			got, err := impl.Value()
 			if err != nil {
 				if err.Error() != tt.expect {
 					t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)

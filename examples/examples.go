@@ -46,7 +46,7 @@ spec:
 	secret_val: AWSSECRETS#/customfoo/secret-val
 	owner: test_10016@example.com
 `
-	pm, err := cm.RetrieveWithInputReplaced(exampleK8sCrdMarshalled)
+	pm, err := cm.RetrieveReplacedString(exampleK8sCrdMarshalled)
 
 	if err != nil {
 		panic(err)
@@ -69,7 +69,7 @@ func SpecConfigTokenReplace[T any](inputType T) (*T, error) {
 	// use custom token separator
 	cm.Config.WithTokenSeparator("://")
 
-	replaced, err := cm.RetrieveWithInputReplaced(string(rawBytes))
+	replaced, err := cm.RetrieveReplacedBytes(rawBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -79,57 +79,29 @@ func SpecConfigTokenReplace[T any](inputType T) (*T, error) {
 	return outType, nil
 }
 
-// Example
-func exampleRetrieveYamlUnmarshalled() {
+// // Example
+// func exampleRetrieveYamlUnmarshalled() {
 
-	type config struct {
-		DbHost   string `yaml:"dbhost"`
-		Username string `yaml:"user"`
-		Password string `yaml:"pass"`
-	}
-	configMarshalled := `
-user: AWSPARAMSTR:///int-test/pocketbase/config|user
-pass: AWSPARAMSTR:///int-test/pocketbase/config|pwd
-dbhost: AWSPARAMSTR:///int-test/pocketbase/config|host
-`
+// 	type config struct {
+// 		DbHost   string `yaml:"dbhost"`
+// 		Username string `yaml:"user"`
+// 		Password string `yaml:"pass"`
+// 	}
+// 	configMarshalled := `
+// user: AWSPARAMSTR:///int-test/pocketbase/config|user
+// pass: AWSPARAMSTR:///int-test/pocketbase/config|pwd
+// dbhost: AWSPARAMSTR:///int-test/pocketbase/config|host
+// `
 
-	appConf := &config{}
-	cm := configmanager.New(context.TODO())
-	// use custom token separator inline with future releases
-	cm.Config.WithTokenSeparator("://")
-	err := cm.RetrieveUnmarshalledFromYaml([]byte(configMarshalled), appConf)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(appConf.DbHost)
-	fmt.Println(appConf.Username)
-	fmt.Println(appConf.Password)
-}
-
-// ### exampleRetrieveYamlMarshalled
-func exampleRetrieveYamlMarshalled() {
-	type config struct {
-		DbHost   string `yaml:"dbhost"`
-		Username string `yaml:"user"`
-		Password string `yaml:"pass"`
-	}
-
-	appConf := &config{
-		DbHost:   "AWSPARAMSTR:///int-test/pocketbase/config|host",
-		Username: "AWSPARAMSTR:///int-test/pocketbase/config|user",
-		Password: "AWSPARAMSTR:///int-test/pocketbase/config|pwd",
-	}
-
-	cm := configmanager.New(context.TODO())
-	cm.Config.WithTokenSeparator("://")
-	err := cm.RetrieveMarshalledYaml(appConf)
-	if err != nil {
-		panic(err)
-	}
-	if appConf.DbHost == "AWSPARAMSTR:///int-test/pocketbase/config|host" {
-		panic(fmt.Errorf("value of DbHost should have been replaced with a value from token"))
-	}
-	fmt.Println(appConf.DbHost)
-	fmt.Println(appConf.Username)
-	fmt.Println(appConf.Password)
-}
+// 	appConf := &config{}
+// 	cm := configmanager.New(context.TODO())
+// 	// use custom token separator inline with future releases
+// 	cm.Config.WithTokenSeparator("://")
+// 	err := cm.RetrieveUnmarshalledFromYaml([]byte(configMarshalled), appConf)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	fmt.Println(appConf.DbHost)
+// 	fmt.Println(appConf.Username)
+// 	fmt.Println(appConf.Password)
+// }

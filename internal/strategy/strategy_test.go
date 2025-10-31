@@ -23,7 +23,7 @@ type mockGenerate struct {
 func (m mockGenerate) SetToken(s *config.ParsedTokenConfig) {
 }
 
-func (m mockGenerate) Token() (s string, e error) {
+func (m mockGenerate) Value() (s string, e error) {
 	return m.value, m.err
 }
 
@@ -69,18 +69,17 @@ func Test_Strategy_Retrieve_succeeds(t *testing.T) {
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
-			rs := strategy.New(*tt.config, log.New(io.Discard))
 			token, _ := config.NewToken(tt.impPrefix, *tt.config)
 			token.WithSanitizedToken(tt.token)
-			got := rs.RetrieveByToken(context.TODO(), tt.impl(t), token)
+			got := strategy.ExchangeToken(tt.impl(t), token)
 			if got.Err != nil {
 				t.Errorf(testutils.TestPhraseWithContext, "Token response errored", got.Err.Error(), tt.expect)
 			}
 			if got.Value() != tt.expect {
 				t.Errorf(testutils.TestPhraseWithContext, "Value not correct", got.Value(), tt.expect)
 			}
-			if got.Key().String() != tt.token {
-				t.Errorf(testutils.TestPhraseWithContext, "INcorrect Token returned in Key", got.Key().String(), tt.token)
+			if got.Key().StoreToken() != tt.token {
+				t.Errorf(testutils.TestPhraseWithContext, "Incorrect Token returned in Key", got.Key().StoreToken(), tt.token)
 			}
 		})
 	}
@@ -107,8 +106,8 @@ func Test_CustomStrategyFuncMap_add_own(t *testing.T) {
 
 			s := strategy.New(*genVarsConf, log.New(io.Discard), strategy.WithStrategyFuncMap(strategy.StrategyFuncMap{config.AzTableStorePrefix: custFunc}))
 
-			store, _ := s.SelectImplementation(context.TODO(), token)
-			_ = s.RetrieveByToken(context.TODO(), store, token)
+			store, _ := s.GetImplementation(context.TODO(), token)
+			_ = strategy.ExchangeToken(store, token)
 
 			if called != 1 {
 				t.Errorf(testutils.TestPhraseWithContext, "custom func not called", called, 1)
@@ -273,7 +272,7 @@ func Test_SelectImpl_With(t *testing.T) {
 			rs := strategy.New(*tt.config, log.New(io.Discard))
 			token, _ := config.NewToken(tt.impPrefix, *tt.config)
 			token.WithSanitizedToken(tt.token)
-			got, err := rs.SelectImplementation(context.TODO(), token)
+			got, err := rs.GetImplementation(context.TODO(), token)
 
 			if err != nil {
 				if err.Error() != tt.expErr.Error() {

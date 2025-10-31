@@ -53,7 +53,7 @@ func (imp *GcpSecrets) SetToken(token *config.ParsedTokenConfig) {
 	imp.config = storeConf
 }
 
-func (imp *GcpSecrets) Token() (string, error) {
+func (imp *GcpSecrets) Value() (string, error) {
 	// Close client currently as new one would be created per iteration
 	defer func() {
 		_ = imp.close()

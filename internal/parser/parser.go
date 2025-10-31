@@ -266,6 +266,12 @@ func (p *Parser) buildKeyPathSeparator(configManagerToken *config.ParsedTokenCon
 		}
 		keyPath += p.curToken.Literal
 		p.nextToken()
+		if p.peekTokenIs(config.EOF) {
+			// check if the next token is EOF once advanced
+			// if it is we want to consume current token else it will be skipped
+			keyPath += p.curToken.Literal
+			break
+		}
 	}
 	configManagerToken.WithKeyPath(keyPath)
 	return nil
@@ -283,6 +289,12 @@ func (p *Parser) buildMetadata(configManagerToken *config.ParsedTokenConfig) err
 	p.nextToken()
 	for !p.peekTokenIs(config.EOF) {
 		if p.peekTokenIsEnd() {
+			if p.currentTokenIs(config.END_META_CONFIGMANAGER_TOKEN) {
+				metadata += p.curToken.Literal
+				found = true
+				p.nextToken()
+				break
+			}
 			return fmt.Errorf("%w, metadata string has no closing", ErrNoEndTagFound)
 		}
 		if p.peekTokenIs(config.END_META_CONFIGMANAGER_TOKEN) {

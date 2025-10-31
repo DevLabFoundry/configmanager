@@ -2,22 +2,17 @@ package configmanager
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 
-	"regexp"
 	"slices"
 	"strings"
 
 	"github.com/DevLabFoundry/configmanager/v3/generator"
 	"github.com/DevLabFoundry/configmanager/v3/internal/config"
-	"github.com/DevLabFoundry/configmanager/v3/internal/lexer"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
-	"github.com/DevLabFoundry/configmanager/v3/internal/parser"
 	"github.com/a8m/envsubst"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -26,7 +21,7 @@ const (
 
 // generateAPI
 type generateAPI interface {
-	Generate(tokens []string) (generator.ParsedMap, error)
+	Generate(tokens []string) (generator.ReplacedToken, error)
 }
 
 type ConfigManager struct {
@@ -75,25 +70,15 @@ func (c *ConfigManager) WithGenerator(generator generateAPI) *ConfigManager {
 
 // Retrieve gets a rawMap from a set implementation
 // will be empty if no matches found
-func (c *ConfigManager) Retrieve(tokens []string) (generator.ParsedMap, error) {
-	return c.retrieve(tokens)
-}
-
-func (c *ConfigManager) retrieve(tokens []string) (generator.ParsedMap, error) {
+func (c *ConfigManager) Retrieve(tokens []string) (generator.ReplacedToken, error) {
 	return c.generator.Generate(tokens)
 }
 
 var ErrEnvSubst = errors.New("envsubst enabled and errored on")
 
-// RetrieveWithInputReplaced parses given input against all possible token strings
-// using regex to grab a list of found tokens in the given string and returns the replaced string
-func (c *ConfigManager) RetrieveWithInputReplaced(input string) (string, error) {
+// RetrieveReplacedString parses given input against all possible token strings
+func (c *ConfigManager) RetrieveReplacedString(input string) (string, error) {
 	// replaces all env vars using strict mode of no unset and no empty
-	//
-	// NOTE: this happens before the FindTokens is called
-	// currently it uses a regex, and envsubst uses a more robust lexer => parser mechanism
-	//
-	// NOTE: configmanager needs an own lexer => parser to allow for easier modification extension in the future
 	if c.GeneratorConfig().EnvSubstEnabled() {
 		var err error
 		input, err = envsubst.StringRestrictedNoDigit(input, true, true, false)
@@ -102,7 +87,8 @@ func (c *ConfigManager) RetrieveWithInputReplaced(input string) (string, error) 
 		}
 	}
 
-	m, err := c.retrieve(FindTokens(input))
+	// calling the same Generate method with the input as single item in a slice
+	m, err := c.generator.Generate([]string{input})
 
 	if err != nil {
 		return "", err
@@ -111,40 +97,14 @@ func (c *ConfigManager) RetrieveWithInputReplaced(input string) (string, error) 
 	return replaceString(m, input), nil
 }
 
-var ErrTokenDiscovery = errors.New("failed to discover tokens")
-
-func (c *ConfigManager) DiscoverTokens(input string) ([]config.ParsedTokenConfig, error) {
-	lexerSource := lexer.Source{FileName: "", FullPath: "", Input: input}
-	l := lexer.New(lexerSource, *c.Config)
-	p := parser.New(l, c.Config).WithLogger(c.logger)
-	parsed, errs := p.Parse()
-	if len(errs) > 0 {
-		return nil, fmt.Errorf("%w in input (%s) with errors: %q", ErrTokenDiscovery, input[0:min(len(input), 25)], errs)
-	}
-
-	pt := []config.ParsedTokenConfig{}
-	for _, prsdToken := range parsed {
-		pt = append(pt, prsdToken.ParsedToken)
-	}
-	return pt, nil
-}
-
-// FindTokens extracts all replaceable tokens
-// from a given input string
-//
-//	Deprecated: FindTokens relies on Regex.
-//	Use func (c *ConfigManager) DiscoverTokens(input string) []*config.ParsedTokenConfig
-func FindTokens(input string) []string {
-	tokens := []string{}
-	for k := range config.VarPrefix {
-		matches := regexp.MustCompile(regexp.QuoteMeta(string(k))+`.(`+TERMINATING_CHAR+`+)`).FindAllString(input, -1)
-		tokens = append(tokens, matches...)
-	}
-	return tokens
+// RetrieveReplacedBytes is functionally identical RetrieveReplacedString
+func (c *ConfigManager) RetrieveReplacedBytes(input []byte) ([]byte, error) {
+	r, err := c.RetrieveReplacedString(string(input))
+	return []byte(r), err
 }
 
 // replaceString fills tokens in a provided input with their actual secret/config values
-func replaceString(inputMap generator.ParsedMap, inputString string) string {
+func replaceString(inputMap generator.ReplacedToken, inputString string) string {
 
 	oldNew := []string(nil)
 	// ordered values by index
@@ -155,7 +115,7 @@ func replaceString(inputMap generator.ParsedMap, inputString string) string {
 	return replacer.Replace(inputString)
 }
 
-func orderedKeysList(inputMap generator.ParsedMap) []string {
+func orderedKeysList(inputMap generator.ReplacedToken) []string {
 	mkeys := inputMap.MapKeys()
 	// order map by keys length so that when passed to the
 	// replacer it will replace the longest first
@@ -164,86 +124,4 @@ func orderedKeysList(inputMap generator.ParsedMap) []string {
 	// the default sort is ascending
 	slices.Sort(mkeys)
 	return mkeys
-}
-
-// RetrieveMarshalledJson
-//
-// It marshalls an input pointer value of a type with appropriate struct tags in JSON
-// marshalls it into a string and runs the appropriate token replacement.
-// and fills the same pointer value with the replaced fields.
-//
-// This is useful for when you have another tool or framework already passing you a known type.
-// e.g. a CRD Spec in kubernetes - where you POSTed the json/yaml spec with tokens in it
-// but now want to use them with tokens replaced for values in a stateless way.
-//
-// Enables you to store secrets in CRD Specs and other metadata your controller can use
-func (cm *ConfigManager) RetrieveMarshalledJson(input any) error {
-
-	// marshall type into a []byte
-	// with tokens in a string like object
-	rawBytes, err := json.Marshal(input)
-	if err != nil {
-		return err
-	}
-	// run the replacement of tokens for values
-	replacedString, err := cm.RetrieveWithInputReplaced(string(rawBytes))
-	if err != nil {
-		return err
-	}
-	// replace the original pointer value with replaced tokens
-	if err := json.Unmarshal([]byte(replacedString), input); err != nil {
-		return err
-	}
-	return nil
-}
-
-// RetrieveUnmarshalledFromJson
-// It accepts an already marshalled byte slice and pointer to the value type.
-// It fills the type with the replaced
-func (c *ConfigManager) RetrieveUnmarshalledFromJson(input []byte, output any) error {
-	replaced, err := c.RetrieveWithInputReplaced(string(input))
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal([]byte(replaced), output); err != nil {
-		return err
-	}
-	return nil
-}
-
-// RetrieveMarshalledYaml
-//
-// Same as RetrieveMarshalledJson
-func (cm *ConfigManager) RetrieveMarshalledYaml(input any) error {
-
-	// marshall type into a []byte
-	// with tokens in a string like object
-	rawBytes, err := yaml.Marshal(input)
-	if err != nil {
-		return err
-	}
-	// run the replacement of tokens for values
-	replacedString, err := cm.RetrieveWithInputReplaced(string(rawBytes))
-	if err != nil {
-		return err
-	}
-	// replace the original pointer value with replaced tokens
-	if err := yaml.Unmarshal([]byte(replacedString), input); err != nil {
-		return err
-	}
-	return nil
-}
-
-// RetrieveUnmarshalledFromYaml
-//
-// Same as RetrieveUnmarshalledFromJson
-func (c *ConfigManager) RetrieveUnmarshalledFromYaml(input []byte, output any) error {
-	replaced, err := c.RetrieveWithInputReplaced(string(input))
-	if err != nil {
-		return err
-	}
-	if err := yaml.Unmarshal([]byte(replaced), output); err != nil {
-		return err
-	}
-	return nil
 }

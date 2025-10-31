@@ -170,20 +170,6 @@ func (ptc *ParsedTokenConfig) WithSanitizedToken(v string) {
 	ptc.sanitizedToken = v
 }
 
-// depracated
-func (ptc *ParsedTokenConfig) new() *ParsedTokenConfig {
-	// // order must be respected here
-	// //
-	// ptc.prefixLessToken = strings.Replace(ptc.fullToken, fmt.Sprintf("%s%s", ptc.prefix, ptc.tokenSeparator), "", 1)
-
-	// // token without metadata and the string itself
-	// ptc.extractMetadataStr()
-	// // token without keys
-	// ptc.keysLookup()
-	// return ptc
-	return nil
-}
-
 func (t *ParsedTokenConfig) ParseMetadata(metadataTyp any) error {
 	// crude json like builder from key/val tags
 	// since we are only ever dealing with a string input
@@ -220,13 +206,24 @@ func (t *ParsedTokenConfig) StoreToken() string {
 // Full returns the full Token path.
 // Including key separator and metadata values
 func (t *ParsedTokenConfig) String() string {
+	token := t.Metadaless()
+	if len(t.metadataStr) > 0 {
+		token += fmt.Sprintf("[%s]", t.metadataStr)
+	}
+	return token
+}
+
+// Keypathless returns the token without the key and metadata attributes
+// Token will include the ImplementationPrefix + token separator + path to item
+func (t *ParsedTokenConfig) Keypathless() string {
+	token := fmt.Sprintf("%s%s%s", t.prefix, t.tokenSeparator, t.sanitizedToken)
+	return token
+}
+
+func (t *ParsedTokenConfig) Metadaless() string {
 	token := fmt.Sprintf("%s%s%s", t.prefix, t.tokenSeparator, t.sanitizedToken)
 	if len(t.keysPath) > 0 {
 		token += t.keySeparator + t.keysPath
-	}
-
-	if len(t.metadataStr) > 0 {
-		token += fmt.Sprintf("[%s]", t.metadataStr)
 	}
 	return token
 }

@@ -52,7 +52,7 @@ func (imp *ParamStore) SetToken(token *config.ParsedTokenConfig) {
 	imp.config = storeConf
 }
 
-func (imp *ParamStore) Token() (string, error) {
+func (imp *ParamStore) Value() (string, error) {
 	imp.logger.Info("%s", "Concrete implementation ParameterStore")
 	imp.logger.Info("ParamStore Token: %s", imp.token.String())
 

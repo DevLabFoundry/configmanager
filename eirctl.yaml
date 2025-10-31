@@ -12,17 +12,20 @@ contexts:
       name: mirror.gcr.io/bash:5.0.18-alpine3.22
 
 pipelines:
-  gha:unit:test:
+  unit:test:
     - pipeline: test:unit 
       env:
         ROOT_PKG_NAME: github.com/DevLabFoundry
+
+  gha:unit:test:
+    - pipeline: unit:test
     - task: sonar:coverage:prep
-      depends_on: test:unit
+      depends_on: unit:test
 
   show_coverage:
-    - pipeline: test:unit
+    - pipeline: unit:test
     - task: show:coverage
-      depends_on: test:unit
+      depends_on: unit:test
 
   build:bin:
     - task: clean
