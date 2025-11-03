@@ -17,14 +17,12 @@ var nonText = map[string]bool{
 	// this forces the lexer to not treat at as TEXT
 	// and enter the switch statement of the state machine
 	// NOTE: when a new implementation is added we should add it here
-	// AWS|AZure...
+	// AWS|AZure|GCP...
 	"A": true,
 	// VAULT (HashiCorp)
 	"V": true,
 	// GCP
 	"G": true,
-	// // Unknown
-	// "U": true,
 }
 
 type Source struct {
@@ -211,7 +209,7 @@ func (l *Lexer) setTextSeparatorToken() config.Token {
 	return tok
 }
 
-// peekIsBeginOfToken attempts to identify the gendoc keyword after 2 slashes
+// peekIsBeginOfToken attempts to identify the possible token
 func (l *Lexer) peekIsBeginOfToken(possibleBeginToken []config.ImplementationPrefix, charsRead string) (bool, string, config.ImplementationPrefix) {
 	for _, pbt := range possibleBeginToken {
 		configToken := ""
@@ -227,11 +225,6 @@ func (l *Lexer) peekIsBeginOfToken(possibleBeginToken []config.ImplementationPre
 		l.resetAfterPeek(len(pbtWithTokenSep))
 	}
 	return false, "", ""
-}
-
-// peekIsEndOfToken
-func (l *Lexer) peekIsEndOfToken() bool {
-	return false
 }
 
 // resetAfterPeek will go back specified amount on the cursor

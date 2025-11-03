@@ -1,6 +1,4 @@
-// Package strategy is a strategy pattern wrapper around the store implementations
-//
-// NOTE: this may be refactored out into the store package directly
+// Package strategy is a factory method wrapper around the backing store implementations
 package strategy
 
 import (
@@ -53,20 +51,17 @@ type strategyFnMap struct {
 	funcMap StrategyFuncMap
 }
 
-type RetrieveStrategy struct {
-	// mu              *sync.Mutex
-	implementation  store.Strategy
+type Strategy struct {
 	config          config.GenVarsConfig
 	strategyFuncMap strategyFnMap
 }
 
-type Opts func(*RetrieveStrategy)
+type Opts func(*Strategy)
 
 // New
-func New(config config.GenVarsConfig, logger log.ILogger, opts ...Opts) *RetrieveStrategy {
-	rs := &RetrieveStrategy{
-		config: config,
-		// mu:              &sync.Mutex{},
+func New(config config.GenVarsConfig, logger log.ILogger, opts ...Opts) *Strategy {
+	rs := &Strategy{
+		config:          config,
 		strategyFuncMap: strategyFnMap{mu: sync.Mutex{}, funcMap: defaultStrategyFuncMap(logger)},
 	}
 	// overwrite or add any options/defaults set above
@@ -82,7 +77,7 @@ func New(config config.GenVarsConfig, logger log.ILogger, opts ...Opts) *Retriev
 // Mainly used for testing
 // NOTE: this may lead to eventual optional configurations by users
 func WithStrategyFuncMap(funcMap StrategyFuncMap) Opts {
-	return func(rs *RetrieveStrategy) {
+	return func(rs *Strategy) {
 		rs.strategyFuncMap.mu.Lock()
 		defer rs.strategyFuncMap.mu.Unlock()
 		for prefix, implementation := range funcMap {
@@ -93,7 +88,7 @@ func WithStrategyFuncMap(funcMap StrategyFuncMap) Opts {
 
 // GetImplementation is a factory method returning the concrete implementation for the retrieval of the token value
 // i.e. facilitating the exchange of the supplied token for the underlying value
-func (rs *RetrieveStrategy) GetImplementation(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+func (rs *Strategy) GetImplementation(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
 	if token == nil {
 		return nil, fmt.Errorf("unable to get prefix, %w", ErrTokenInvalid)
 	}
@@ -113,24 +108,6 @@ func ExchangeToken(s store.Strategy, token *config.ParsedTokenConfig) *TokenResp
 	cr.value, cr.Err = s.Value()
 	return cr
 }
-
-// func (rs *RetrieveStrategy) setImplementation(strategy store.Strategy) {
-// 	rs.mu.Lock()
-// 	defer rs.mu.Unlock()
-// 	rs.implementation = strategy
-// }
-
-// func (rs *RetrieveStrategy) setTokenVal(s *config.ParsedTokenConfig) {
-// 	rs.mu.Lock()
-// 	defer rs.mu.Unlock()
-// 	rs.implementation.SetToken(s)
-// }
-
-// func (rs *RetrieveStrategy) getTokenValue() (string, error) {
-// 	rs.mu.Lock()
-// 	defer rs.mu.Unlock()
-// 	return rs.implementation.Token()
-// }
 
 type TokenResponse struct {
 	value string

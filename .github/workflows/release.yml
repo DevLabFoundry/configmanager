@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   set-version:
+    name: Set Version
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.head_branch == 'master' && github.event.workflow_run.conclusion == 'success' }}
     container:
@@ -39,6 +40,7 @@ jobs:
         id: gitversion
 
   release:
+    name: Release
     runs-on: ubuntu-latest
     needs: set-version
     env:

@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   set-version:
+    name: Set Version
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -44,6 +45,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    name: Run Tests
     needs: set-version
     env:
       SEMVER: ${{ needs.set-version.outputs.semVer }}
