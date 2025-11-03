@@ -10,8 +10,8 @@ import (
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 )
 
-func wrapErr(incompleteToken string, line, position int, etyp error) error {
-	return fmt.Errorf("\n- token: (%s) on line: %d column: %d] %w", incompleteToken, line, position, etyp)
+func wrapErr(incompleteToken *config.ParsedTokenConfig, sanitized string, line, position int, etyp error) error {
+	return fmt.Errorf("\n- token: (%s%s%s) on line: %d column: %d] %w", incompleteToken.Prefix(), incompleteToken.TokenSeparator(), sanitized, line, position, etyp)
 }
 
 var (
@@ -26,13 +26,13 @@ type ConfigManagerTokenBlock struct {
 }
 
 type Parser struct {
-	l         *lexer.Lexer
-	errors    []error
-	log       log.ILogger
-	curToken  config.Token
-	peekToken config.Token
-	config    *config.GenVarsConfig
-	environ   []string
+	l            *lexer.Lexer
+	errors       []error
+	log          log.ILogger
+	currentToken config.Token
+	peekToken    config.Token
+	config       *config.GenVarsConfig
+	environ      []string
 }
 
 func New(l *lexer.Lexer, c *config.GenVarsConfig) *Parser {
@@ -71,7 +71,7 @@ func (p *Parser) Parse() ([]ConfigManagerTokenBlock, []error) {
 	for !p.currentTokenIs(config.EOF) {
 		if p.currentTokenIs(config.BEGIN_CONFIGMANAGER_TOKEN) {
 			// continues to read the tokens until it hits an end token or errors
-			configManagerToken, err := config.NewToken(p.curToken.ImpPrefix, *p.config)
+			configManagerToken, err := config.NewToken(p.currentToken.ImpPrefix, *p.config)
 			if err != nil {
 				return nil, []error{err}
 			}
@@ -86,12 +86,12 @@ func (p *Parser) Parse() ([]ConfigManagerTokenBlock, []error) {
 }
 
 func (p *Parser) nextToken() {
-	p.curToken = p.peekToken
+	p.currentToken = p.peekToken
 	p.peekToken = p.l.NextToken()
 }
 
 func (p *Parser) currentTokenIs(t config.TokenType) bool {
-	return p.curToken.Type == t
+	return p.currentToken.Type == t
 }
 
 func (p *Parser) peekTokenIs(t config.TokenType) bool {
@@ -111,13 +111,12 @@ func (p *Parser) peekTokenIsEnd() bool {
 
 // buildConfigManagerTokenFromBlocks
 func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.ParsedTokenConfig) *ConfigManagerTokenBlock {
-	currentToken := p.curToken
+	currentToken := p.currentToken
 	stmt := &ConfigManagerTokenBlock{BeginToken: currentToken}
 
 	// move past current token
 	p.nextToken()
 
-	fullToken := currentToken.Literal
 	// built as part of the below parser
 	sanitizedToken := ""
 
@@ -137,19 +136,15 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 		// when next token is another token
 		// i.e. the tokens are adjacent
 		if p.peekTokenIs(config.BEGIN_CONFIGMANAGER_TOKEN) {
-			fullToken += p.curToken.Literal
-			sanitizedToken += p.curToken.Literal
-			stmt.EndToken = p.curToken
+			sanitizedToken += p.currentToken.Literal
+			stmt.EndToken = p.currentToken
 			break
 		}
 
 		// reached the end of token
 		if p.peekTokenIsEnd() {
-			// we want set the current token as both the full and sanitized
-			// the current lexer token is the entire configmanager token
-			fullToken += p.curToken.Literal
-			sanitizedToken += p.curToken.Literal
-			stmt.EndToken = p.curToken
+			sanitizedToken += p.currentToken.Literal
+			stmt.EndToken = p.currentToken
 			break
 		}
 
@@ -162,7 +157,7 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 		// keyLookup and Metadata are optional - is always specified in that order
 		if p.currentTokenIs(config.CONFIGMANAGER_TOKEN_KEY_PATH_SEPARATOR) {
 			if err := p.buildKeyPathSeparator(configManagerToken); err != nil {
-				p.errors = append(p.errors, wrapErr(fullToken, currentToken.Line, currentToken.Column, err))
+				p.errors = append(p.errors, wrapErr(configManagerToken, sanitizedToken, currentToken.Line, currentToken.Column, err))
 				return nil
 			}
 			// keyPath would have built the keyPath and metadata if any
@@ -173,31 +168,24 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 		// check metadata there can be a metadata bracket `[key=val,k1=v2]`
 		if p.currentTokenIs(config.BEGIN_META_CONFIGMANAGER_TOKEN) {
 			if err := p.buildMetadata(configManagerToken); err != nil {
-				p.errors = append(p.errors, wrapErr(fullToken, currentToken.Line, currentToken.Column, err))
+				p.errors = append(p.errors, wrapErr(configManagerToken, sanitizedToken, currentToken.Line, currentToken.Column, err))
 				return nil
 			}
 			break
 		}
 
-		sanitizedToken += p.curToken.Literal
-		fullToken += p.curToken.Literal
+		sanitizedToken += p.currentToken.Literal
 
 		// when the next token is EOF
 		// we want set the current token
 		// else it would be lost once the parser is advanced below
 		p.nextToken()
 		if p.peekTokenIs(config.EOF) {
-			fullToken += p.curToken.Literal
-			sanitizedToken += p.curToken.Literal
-			stmt.EndToken = p.curToken
+			sanitizedToken += p.currentToken.Literal
+			stmt.EndToken = p.currentToken
 			break
 		}
 	}
-
-	// if notFoundEnd {
-	// 	p.errors = append(p.errors, wrapErr(fullToken, currentToken.Line, currentToken.Column, ErrNoEndTagFound))
-	// 	return nil
-	// }
 
 	configManagerToken.WithSanitizedToken(sanitizedToken)
 	stmt.ParsedToken = *configManagerToken
@@ -213,13 +201,13 @@ func (p *Parser) buildKeyPathSeparator(configManagerToken *config.ParsedTokenCon
 	if p.peekTokenIs(config.EOF) {
 		// if the next token EOF we set the path as current token and exit
 		// otherwise we would never hit the below loop
-		configManagerToken.WithKeyPath(p.curToken.Literal)
+		configManagerToken.WithKeyPath(p.currentToken.Literal)
 		return nil
 	}
 	for !p.peekTokenIs(config.EOF) {
 		if p.peekTokenIs(config.BEGIN_META_CONFIGMANAGER_TOKEN) {
 			// add current token to the keysPath and move onto the metadata
-			keyPath += p.curToken.Literal
+			keyPath += p.currentToken.Literal
 			p.nextToken()
 			if err := p.buildMetadata(configManagerToken); err != nil {
 				return err
@@ -228,15 +216,15 @@ func (p *Parser) buildKeyPathSeparator(configManagerToken *config.ParsedTokenCon
 		}
 		// touching another token or end of token
 		if p.peekTokenIs(config.BEGIN_CONFIGMANAGER_TOKEN) || p.peekTokenIsEnd() {
-			keyPath += p.curToken.Literal
+			keyPath += p.currentToken.Literal
 			break
 		}
-		keyPath += p.curToken.Literal
+		keyPath += p.currentToken.Literal
 		p.nextToken()
 		if p.peekTokenIs(config.EOF) {
 			// check if the next token is EOF once advanced
 			// if it is we want to consume current token else it will be skipped
-			keyPath += p.curToken.Literal
+			keyPath += p.currentToken.Literal
 			break
 		}
 	}
@@ -260,12 +248,12 @@ func (p *Parser) buildMetadata(configManagerToken *config.ParsedTokenConfig) err
 			return fmt.Errorf("%w, metadata (%s) string has no closing", ErrNoEndTagFound, metadata)
 		}
 		if p.peekTokenIs(config.END_META_CONFIGMANAGER_TOKEN) {
-			metadata += p.curToken.Literal
+			metadata += p.currentToken.Literal
 			found = true
 			p.nextToken()
 			break
 		}
-		metadata += p.curToken.Literal
+		metadata += p.currentToken.Literal
 		p.nextToken()
 	}
 	configManagerToken.WithMetadata(metadata)

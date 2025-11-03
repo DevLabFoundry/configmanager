@@ -239,3 +239,7 @@ func (t *ParsedTokenConfig) Metadata() string {
 func (t *ParsedTokenConfig) Prefix() ImplementationPrefix {
 	return t.prefix
 }
+
+func (t *ParsedTokenConfig) TokenSeparator() string {
+	return t.tokenSeparator
+}
