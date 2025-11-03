@@ -16,7 +16,7 @@ jobs:
   set-version:
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/dotnet/sdk:6.0
+      image: mcr.microsoft.com/dotnet/sdk:10.0
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:

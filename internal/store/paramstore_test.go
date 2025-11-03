@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -13,11 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
 )
-
-// var (
-// 	tsuccessParam                   = "someVal"
-// 	tsuccessObj   map[string]string = map[string]string{"AWSPARAMSTR#/token/1": "someVal"}
-// )
 
 type mockParamApi func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error)
 
@@ -72,45 +68,69 @@ func Test_GetParamStore(t *testing.T) {
 				})
 			},
 		},
-		// "successVal with keyseparator": {"AWSPARAMSTR#/token/1|somekey", "|", "#", tsuccessParam, func(t *testing.T) paramStoreApi {
-		// 	return mockParamApi(func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
-		// 		t.Helper()
-		// 		awsParamtStoreCommonGetChecker(t, params)
+		"successVal with keyseparator": {
+			func() *config.ParsedTokenConfig {
+				// "AWSPARAMSTR#/token/1|somekey",
+				tkn, _ := config.NewToken(config.ParamStorePrefix, *config.NewConfig())
+				tkn.WithSanitizedToken("/token/1")
+				tkn.WithKeyPath("somekey")
+				tkn.WithMetadata("")
+				return tkn
+			},
+			tsuccessParam, func(t *testing.T) mockParamApi {
+				return mockParamApi(func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
+					t.Helper()
+					awsParamtStoreCommonGetChecker(t, params)
 
-		// 		if strings.Contains(*params.Name, "|somekey") {
-		// 			t.Errorf("incorrectly stripped key separator")
-		// 		}
+					if strings.Contains(*params.Name, "|somekey") {
+						t.Errorf("incorrectly stripped key separator")
+					}
 
-		// 		return &ssm.GetParameterOutput{
-		// 			Parameter: &types.Parameter{Value: &tsuccessParam},
-		// 		}, nil
-		// 	})
-		// }, config.NewConfig(),
-		// },
-		// "errored": {"AWSPARAMSTR#/token/1", "|", "#", "unable to retrieve", func(t *testing.T) paramStoreApi {
-		// 	return mockParamApi(func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
-		// 		t.Helper()
-		// 		awsParamtStoreCommonGetChecker(t, params)
-		// 		return nil, fmt.Errorf("unable to retrieve")
-		// 	})
-		// }, config.NewConfig(),
-		// },
-		// "nil to empty": {"AWSPARAMSTR#/token/1", "|", "#", "", func(t *testing.T) paramStoreApi {
-		// 	return mockParamApi(func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
-		// 		t.Helper()
-		// 		awsParamtStoreCommonGetChecker(t, params)
-		// 		return &ssm.GetParameterOutput{
-		// 			Parameter: &types.Parameter{Value: nil},
-		// 		}, nil
-		// 	})
-		// }, config.NewConfig(),
-		// },
+					return &ssm.GetParameterOutput{
+						Parameter: &types.Parameter{Value: &tsuccessParam},
+					}, nil
+				})
+			},
+		},
+		"errored": {
+			func() *config.ParsedTokenConfig {
+				// "AWSPARAMSTR#/token/1",
+				tkn, _ := config.NewToken(config.ParamStorePrefix, *config.NewConfig())
+				tkn.WithSanitizedToken("/token/1")
+				tkn.WithKeyPath("")
+				tkn.WithMetadata("")
+				return tkn
+			},
+			"unable to retrieve", func(t *testing.T) mockParamApi {
+				return mockParamApi(func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
+					t.Helper()
+					awsParamtStoreCommonGetChecker(t, params)
+					return nil, fmt.Errorf("unable to retrieve")
+				})
+			},
+		},
+		"nil to empty": {
+			func() *config.ParsedTokenConfig {
+				// "AWSPARAMSTR#/token/1",
+				tkn, _ := config.NewToken(config.ParamStorePrefix, *config.NewConfig())
+				tkn.WithSanitizedToken("/token/1")
+				tkn.WithKeyPath("")
+				tkn.WithMetadata("")
+				return tkn
+			},
+			"", func(t *testing.T) mockParamApi {
+				return mockParamApi(func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
+					t.Helper()
+					awsParamtStoreCommonGetChecker(t, params)
+					return &ssm.GetParameterOutput{
+						Parameter: &types.Parameter{Value: nil},
+					}, nil
+				})
+			},
+		},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-
-			// token, _ := config.NewToken(tt.token, *tt.config.WithTokenSeparator(tt.tokenSeparator).WithKeySeparator(tt.keySeparator))
-
 			impl, err := store.NewParamStore(context.TODO(), log.New(io.Discard))
 			if err != nil {
 				t.Errorf(testutils.TestPhrase, err.Error(), nil)

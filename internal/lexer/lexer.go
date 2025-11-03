@@ -23,8 +23,8 @@ var nonText = map[string]bool{
 	"V": true,
 	// GCP
 	"G": true,
-	// Unknown
-	"U": true,
+	// // Unknown
+	// "U": true,
 }
 
 type Source struct {
@@ -116,19 +116,6 @@ func (l *Lexer) NextToken() config.Token {
 			}
 		} else {
 			tok = config.Token{Type: config.TEXT, Literal: "V"}
-		}
-	case 'U':
-		// UNKNOWN
-		if l.peekChar() == 'N' {
-			l.readChar()
-			if found, literal, imp := l.peekIsBeginOfToken([]config.ImplementationPrefix{config.UnknownPrefix}, "UN"); found {
-				tok = config.Token{Type: config.BEGIN_CONFIGMANAGER_TOKEN, Literal: literal, ImpPrefix: imp}
-			} else {
-				// it is not a marker AW as text
-				tok = config.Token{Type: config.TEXT, Literal: "UN"}
-			}
-		} else {
-			tok = config.Token{Type: config.TEXT, Literal: "U"}
 		}
 	case '=':
 		tok = config.Token{Type: config.EQUALS, Literal: "="}
