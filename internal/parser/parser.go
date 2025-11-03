@@ -4,13 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/lexer"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
-
-	"github.com/a8m/envsubst"
 )
 
 func wrapErr(incompleteToken string, line, position int, etyp error) error {
@@ -74,38 +71,23 @@ func (p *Parser) WithLogger(logger log.ILogger) *Parser {
 //
 // The parser does not do a second pass and interprets the source from top to bottom
 func (p *Parser) Parse() ([]ConfigManagerTokenBlock, []error) {
-	genDocStms := []ConfigManagerTokenBlock{}
+	stmts := []ConfigManagerTokenBlock{}
 
 	for !p.currentTokenIs(config.EOF) {
 		if p.currentTokenIs(config.BEGIN_CONFIGMANAGER_TOKEN) {
-			// parseGenDocBlocks will advance the token until
-			// it hits the END_DOC_GEN token
+			// continues to read the tokens until it hits an end token or errors
 			configManagerToken, err := config.NewToken(p.curToken.ImpPrefix, *p.config)
 			if err != nil {
 				return nil, []error{err}
 			}
 			if stmt := p.buildConfigManagerTokenFromBlocks(configManagerToken); stmt != nil {
-				genDocStms = append(genDocStms, *stmt)
+				stmts = append(stmts, *stmt)
 			}
 		}
 		p.nextToken()
 	}
 
-	return genDocStms, p.errors
-}
-
-// ExpandEnvVariables expands the env vars inside DocContent
-// to their environment var values.
-//
-// Failing when a variable is either not set or set but empty.
-func ExpandEnvVariables(input string, vars []string) (string, error) {
-	for _, v := range vars {
-		kv := strings.Split(v, "=")
-		key, value := kv[0], kv[1] // kv[1] will be an empty string = ""
-		os.Setenv(key, value)
-	}
-
-	return envsubst.StringRestrictedNoDigit(input, true, true, false)
+	return stmts, p.errors
 }
 
 func (p *Parser) nextToken() {
@@ -132,10 +114,7 @@ func (p *Parser) peekTokenIsEnd() bool {
 	return endTokens[p.peekToken.Type]
 }
 
-// buildConfigManagerTokenFromBlocks throws away all other content other
-// than what is inside //+gendoc tags
-// parses any annotation and creates GenDocBlock
-// for later analysis
+// buildConfigManagerTokenFromBlocks
 func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.ParsedTokenConfig) *ConfigManagerTokenBlock {
 	currentToken := p.curToken
 	stmt := &ConfigManagerTokenBlock{BeginToken: currentToken}
@@ -147,20 +126,21 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 	// built as part of the below parser
 	sanitizedToken := ""
 
-	// should exit the loop if no end doc tag found
+	// should exit the loop if no end tag found
 	notFoundEnd := true
 
 	// stop on end of file
 	for !p.peekTokenIs(config.EOF) {
-		// This is the target state when there is an optional token wrapping
-		// 	{{ IMP://path }}
-		if p.peekTokenIs(config.END_CONFIGMANAGER_TOKEN) {
-			notFoundEnd = false
-			fullToken += p.curToken.Literal
-			sanitizedToken += p.curToken.Literal
-			stmt.EndToken = p.curToken
-			break
-		}
+		// // This is the target state when there is an optional token wrapping
+		// // 	e.g. `{{ IMP://path }}`
+		// // currently this is untestable
+		// if p.peekTokenIs(config.END_CONFIGMANAGER_TOKEN) {
+		// 	notFoundEnd = false
+		// 	fullToken += p.curToken.Literal
+		// 	sanitizedToken += p.curToken.Literal
+		// 	stmt.EndToken = p.curToken
+		// 	break
+		// }
 
 		// when next token is another token
 		// i.e. the tokens are adjacent

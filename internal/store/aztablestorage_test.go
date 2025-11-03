@@ -126,7 +126,6 @@ func Test_azstorage_with_value_property(t *testing.T) {
 				tkn, _ := config.NewToken(config.AzKeyVaultSecretsPrefix, *conf)
 				tkn.WithSanitizedToken("/test-account/table/partitionkey/rowKey")
 				tkn.WithKeyPath("host")
-				tkn.WithMetadata("version:123]")
 				return tkn
 			},
 			"map[bool:true host:foo port:1234]",
@@ -138,42 +137,58 @@ func Test_azstorage_with_value_property(t *testing.T) {
 				})
 			},
 		},
-		// "return value property with string only": {
-		// 	"AZTABLESTORE:///test-account/table/partitionkey/rowKey",
-		// 	"foo.bar.com",
-		// 	func(t *testing.T) tableStoreApi {
-		// 		return mockAzTableStoreApi(func(ctx context.Context, partitionKey string, rowKey string, options *aztables.GetEntityOptions) (aztables.GetEntityResponse, error) {
-		// 			t.Helper()
-		// 			resp := aztables.GetEntityResponse{Value: []byte(`{"value":"foo.bar.com"}`)}
-		// 			return resp, nil
-		// 		})
-		// 	},
-		// 	conf,
-		// },
-		// "return value property with numeric only": {
-		// 	"AZTABLESTORE:///test-account/table/partitionkey/rowKey",
-		// 	"1234",
-		// 	func(t *testing.T) tableStoreApi {
-		// 		return mockAzTableStoreApi(func(ctx context.Context, partitionKey string, rowKey string, options *aztables.GetEntityOptions) (aztables.GetEntityResponse, error) {
-		// 			t.Helper()
-		// 			resp := aztables.GetEntityResponse{Value: []byte(`{"value":1234}`)}
-		// 			return resp, nil
-		// 		})
-		// 	},
-		// 	conf,
-		// },
-		// "return value property with boolean only": {
-		// 	"AZTABLESTORE:///test-account/table/partitionkey/rowKey",
-		// 	"false",
-		// 	func(t *testing.T) tableStoreApi {
-		// 		return mockAzTableStoreApi(func(ctx context.Context, partitionKey string, rowKey string, options *aztables.GetEntityOptions) (aztables.GetEntityResponse, error) {
-		// 			t.Helper()
-		// 			resp := aztables.GetEntityResponse{Value: []byte(`{"value":false}`)}
-		// 			return resp, nil
-		// 		})
-		// 	},
-		// 	conf,
-		// },
+		"return value property with string only": {
+			func() *config.ParsedTokenConfig {
+				// "AZTABLESTORE:///test-account/table/partitionkey/rowKey",
+				tkn, _ := config.NewToken(config.AzKeyVaultSecretsPrefix, *conf)
+				tkn.WithSanitizedToken("/test-account/table/partitionkey/rowKey")
+				// tkn.WithKeyPath("host")
+				// tkn.WithMetadata("version:123]")
+				return tkn
+			},
+			"foo.bar.com",
+			func(t *testing.T) mockAzTableStoreApi {
+				return mockAzTableStoreApi(func(ctx context.Context, partitionKey string, rowKey string, options *aztables.GetEntityOptions) (aztables.GetEntityResponse, error) {
+					t.Helper()
+					resp := aztables.GetEntityResponse{Value: []byte(`{"value":"foo.bar.com"}`)}
+					return resp, nil
+				})
+			},
+		},
+		"return value property with numeric only": {
+			func() *config.ParsedTokenConfig {
+				// "AZTABLESTORE:///test-account/table/partitionkey/rowKey",
+				tkn, _ := config.NewToken(config.AzKeyVaultSecretsPrefix, *conf)
+				tkn.WithSanitizedToken("/test-account/table/partitionkey/rowKey")
+				// tkn.WithKeyPath("host")
+				// tkn.WithMetadata("version:123]")
+				return tkn
+			},
+			"1234",
+			func(t *testing.T) mockAzTableStoreApi {
+				return mockAzTableStoreApi(func(ctx context.Context, partitionKey string, rowKey string, options *aztables.GetEntityOptions) (aztables.GetEntityResponse, error) {
+					t.Helper()
+					resp := aztables.GetEntityResponse{Value: []byte(`{"value":1234}`)}
+					return resp, nil
+				})
+			},
+		},
+		"return value property with boolean only": {
+			func() *config.ParsedTokenConfig {
+				// "AZTABLESTORE:///test-account/table/partitionkey/rowKey",
+				tkn, _ := config.NewToken(config.AzKeyVaultSecretsPrefix, *conf)
+				tkn.WithSanitizedToken("/test-account/table/partitionkey/rowKey")
+				return tkn
+			},
+			"false",
+			func(t *testing.T) mockAzTableStoreApi {
+				return mockAzTableStoreApi(func(ctx context.Context, partitionKey string, rowKey string, options *aztables.GetEntityOptions) (aztables.GetEntityResponse, error) {
+					t.Helper()
+					resp := aztables.GetEntityResponse{Value: []byte(`{"value":false}`)}
+					return resp, nil
+				})
+			},
+		},
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
@@ -221,25 +236,38 @@ func Test_AzTableStore_Error(t *testing.T) {
 				})
 			},
 		},
-		// "errored on service method call": {"AZTABLESTORE#/test-account/table/token/ok", ErrRetrieveFailed, func(t *testing.T) tableStoreApi {
-		// 	return mockAzTableStoreApi(func(ctx context.Context, partitionKey string, rowKey string, options *aztables.GetEntityOptions) (aztables.GetEntityResponse, error) {
-		// 		t.Helper()
-		// 		resp := aztables.GetEntityResponse{}
-		// 		return resp, fmt.Errorf("network error")
-		// 	})
-		// },
-		// 	config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"),
-		// },
+		"errored on service method call": {
+			func() *config.ParsedTokenConfig {
+				// "AZTABLESTORE#/test-account/table/token/ok",
+				tkn, _ := config.NewToken(config.AzKeyVaultSecretsPrefix, *config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"))
+				tkn.WithSanitizedToken("/test-account/table/token/ok")
+				return tkn
+			},
+			store.ErrRetrieveFailed,
+			func(t *testing.T) mockAzTableStoreApi {
+				return mockAzTableStoreApi(func(ctx context.Context, partitionKey string, rowKey string, options *aztables.GetEntityOptions) (aztables.GetEntityResponse, error) {
+					t.Helper()
+					resp := aztables.GetEntityResponse{}
+					return resp, fmt.Errorf("network error")
+				})
+			},
+		},
 
-		// "empty": {"AZTABLESTORE#/test-vault/token/1|somekey", ErrIncorrectlyStructuredToken, func(t *testing.T) tableStoreApi {
-		// 	return mockAzTableStoreApi(func(ctx context.Context, partitionKey string, rowKey string, options *aztables.GetEntityOptions) (aztables.GetEntityResponse, error) {
-		// 		t.Helper()
-		// 		resp := aztables.GetEntityResponse{}
-		// 		return resp, nil
-		// 	})
-		// },
-		// 	config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"),
-		// },
+		"empty": {
+			func() *config.ParsedTokenConfig {
+				// "AZTABLESTORE#/test-vault/token/1|somekey",
+				tkn, _ := config.NewToken(config.AzKeyVaultSecretsPrefix, *config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"))
+				tkn.WithSanitizedToken("/test-vault/token/1|somekey")
+				return tkn
+			},
+			store.ErrIncorrectlyStructuredToken, func(t *testing.T) mockAzTableStoreApi {
+				return mockAzTableStoreApi(func(ctx context.Context, partitionKey string, rowKey string, options *aztables.GetEntityOptions) (aztables.GetEntityResponse, error) {
+					t.Helper()
+					resp := aztables.GetEntityResponse{}
+					return resp, nil
+				})
+			},
+		},
 	}
 
 	for name, tt := range tests {
