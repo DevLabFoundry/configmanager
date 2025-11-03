@@ -26,19 +26,19 @@ func (m *mockGenerate) Value() (s string, e error) {
 	return m.value, m.err
 }
 
-func Test_Generate(t *testing.T) {
+func TestGenerate(t *testing.T) {
 
 	t.Run("succeeds with funcMap", func(t *testing.T) {
 		var custFunc = func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			m := &mockGenerate{"UNKNOWN://mountPath/token", "bar", nil}
+			m := &mockGenerate{"AWSPARAMSTR://mountPath/token", "bar", nil}
 			return m, nil
 		}
 
 		g := generator.NewGenerator(context.TODO(), func(gv *generator.GenVars) {
 			gv.Logger = log.New(&bytes.Buffer{})
 		})
-		g.WithStrategyMap(strategy.StrategyFuncMap{config.UnknownPrefix: custFunc})
-		got, err := g.Generate([]string{"UNKNOWN://mountPath/token"})
+		g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: custFunc})
+		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
 
 		if err != nil {
 			t.Fatal("errored on generate")
@@ -50,13 +50,13 @@ func Test_Generate(t *testing.T) {
 
 	t.Run("errors in retrieval and logs it out", func(t *testing.T) {
 		var custFunc = func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			m := &mockGenerate{"UNKNOWN://mountPath/token", "bar", fmt.Errorf("failed to get value")}
+			m := &mockGenerate{"AWSPARAMSTR://mountPath/token", "bar", fmt.Errorf("failed to get value")}
 			return m, nil
 		}
 
 		g := generator.NewGenerator(context.TODO())
-		g.WithStrategyMap(strategy.StrategyFuncMap{config.UnknownPrefix: custFunc})
-		got, err := g.Generate([]string{"UNKNOWN://mountPath/token"})
+		g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: custFunc})
+		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
 
 		if err != nil {
 			t.Fatal("errored on generate")
@@ -73,8 +73,8 @@ func Test_Generate(t *testing.T) {
 		}
 
 		g := generator.NewGenerator(context.TODO())
-		g.WithStrategyMap(strategy.StrategyFuncMap{config.UnknownPrefix: custFunc})
-		got, err := g.Generate([]string{"UNKNOWN://mountPath/token|key1.key2"})
+		g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: custFunc})
+		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token|key1.key2"})
 
 		if err != nil {
 			t.Fatal("errored on generate")
@@ -82,13 +82,13 @@ func Test_Generate(t *testing.T) {
 		if len(got) != 1 {
 			t.Errorf(testutils.TestPhraseWithContext, "incorect number in a map", len(got), 0)
 		}
-		if got["UNKNOWN://mountPath/token|key1.key2"] != "val" {
-			t.Errorf(testutils.TestPhraseWithContext, "incorrect value returned in parsedMap", got["UNKNOWN://mountPath/token|key1.key2"], "val")
+		if got["AWSPARAMSTR://mountPath/token|key1.key2"] != "val" {
+			t.Errorf(testutils.TestPhraseWithContext, "incorrect value returned in parsedMap", got["AWSPARAMSTR://mountPath/token|key1.key2"], "val")
 		}
 	})
 }
 
-func Test_generate_withKeys_lookup(t *testing.T) {
+func TestGenerate_withKeys_lookup(t *testing.T) {
 	ttests := map[string]struct {
 		custFunc  strategy.StrategyFunc
 		token     string
@@ -99,7 +99,7 @@ func Test_generate_withKeys_lookup(t *testing.T) {
 				m := &mockGenerate{"token", `{"foo":"bar","key1":{"key2":"val"}}`, nil}
 				return m, nil
 			},
-			token:     "UNKNOWN://mountPath/token|key1.key2",
+			token:     "AWSPARAMSTR://mountPath/token|key1.key2",
 			expectVal: "val",
 		},
 		"retrieves number value correctly from a keylookup inside": {
@@ -107,7 +107,7 @@ func Test_generate_withKeys_lookup(t *testing.T) {
 				m := &mockGenerate{"token", `{"foo":"bar","key1":{"key2":123}}`, nil}
 				return m, nil
 			},
-			token:     "UNKNOWN://mountPath/token|key1.key2",
+			token:     "AWSPARAMSTR://mountPath/token|key1.key2",
 			expectVal: "123",
 		},
 		"retrieves nothing as keylookup is incorrect": {
@@ -115,7 +115,7 @@ func Test_generate_withKeys_lookup(t *testing.T) {
 				m := &mockGenerate{"token", `{"foo":"bar","key1":{"key2":123}}`, nil}
 				return m, nil
 			},
-			token:     "UNKNOWN://mountPath/token|noprop",
+			token:     "AWSPARAMSTR://mountPath/token|noprop",
 			expectVal: "",
 		},
 		"retrieves value as is due to incorrectly stored json in backing store": {
@@ -123,14 +123,14 @@ func Test_generate_withKeys_lookup(t *testing.T) {
 				m := &mockGenerate{"token", `foo":"bar","key1":{"key2":123}}`, nil}
 				return m, nil
 			},
-			token:     "UNKNOWN://mountPath/token|noprop",
+			token:     "AWSPARAMSTR://mountPath/token|noprop",
 			expectVal: `foo":"bar","key1":{"key2":123}}`,
 		},
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
 			g := generator.NewGenerator(context.TODO())
-			g.WithStrategyMap(strategy.StrategyFuncMap{config.UnknownPrefix: tt.custFunc})
+			g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: tt.custFunc})
 			got, err := g.Generate([]string{tt.token})
 
 			if err != nil {
