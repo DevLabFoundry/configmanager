@@ -78,18 +78,3 @@ func LookupIdent(ident string) TokenType {
 	}
 	return TEXT
 }
-
-// var typeMapper = map[string]TokenType{
-// 	"MESSAGE":   MESSAGE,
-// 	"OPERATION": OPERATION,
-// 	"CHANNEL":   CHANNEL,
-// 	"INFO":      INFO,
-// 	"SERVER":    SERVER,
-// }
-
-// func LookupType(typ string) TokenType {
-// 	if tok, ok := typeMapper[strings.ToUpper(typ)]; ok {
-// 		return tok
-// 	}
-// 	return ""
-// }

@@ -20,37 +20,6 @@ type StrategyFunc func(ctx context.Context, token *config.ParsedTokenConfig) (st
 // StrategyFuncMap
 type StrategyFuncMap map[config.ImplementationPrefix]StrategyFunc
 
-func defaultStrategyFuncMap(logger log.ILogger) map[config.ImplementationPrefix]StrategyFunc {
-	return map[config.ImplementationPrefix]StrategyFunc{
-		config.AzTableStorePrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewAzTableStore(ctx, token, logger)
-		},
-		config.AzAppConfigPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewAzAppConf(ctx, token, logger)
-		},
-		config.GcpSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewGcpSecrets(ctx, logger)
-		},
-		config.SecretMgrPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewSecretsMgr(ctx, logger)
-		},
-		config.ParamStorePrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewParamStore(ctx, logger)
-		},
-		config.AzKeyVaultSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewKvScrtStore(ctx, token, logger)
-		},
-		config.HashicorpVaultPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewVaultStore(ctx, token, logger)
-		},
-	}
-}
-
-type strategyFnMap struct {
-	mu      sync.Mutex
-	funcMap StrategyFuncMap
-}
-
 type Strategy struct {
 	config          config.GenVarsConfig
 	strategyFuncMap strategyFnMap
@@ -121,4 +90,35 @@ func (tr *TokenResponse) Key() *config.ParsedTokenConfig {
 
 func (tr *TokenResponse) Value() string {
 	return tr.value
+}
+
+func defaultStrategyFuncMap(logger log.ILogger) StrategyFuncMap {
+	return map[config.ImplementationPrefix]StrategyFunc{
+		config.AzTableStorePrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			return store.NewAzTableStore(ctx, token, logger)
+		},
+		config.AzAppConfigPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			return store.NewAzAppConf(ctx, token, logger)
+		},
+		config.GcpSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			return store.NewGcpSecrets(ctx, logger)
+		},
+		config.SecretMgrPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			return store.NewSecretsMgr(ctx, logger)
+		},
+		config.ParamStorePrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			return store.NewParamStore(ctx, logger)
+		},
+		config.AzKeyVaultSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			return store.NewKvScrtStore(ctx, token, logger)
+		},
+		config.HashicorpVaultPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			return store.NewVaultStore(ctx, token, logger)
+		},
+	}
+}
+
+type strategyFnMap struct {
+	mu      sync.Mutex
+	funcMap StrategyFuncMap
 }

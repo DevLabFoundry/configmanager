@@ -20,7 +20,7 @@ func Test_ParserBlocks(t *testing.T) {
 		// prefix,path,keyLookup
 		expected [][3]string
 	}{
-		"tokens touching each other in source": {
+		"tokens touching each other in source after key path": {
 			`foo stuyfsdfsf
 		foo=AWSPARAMSTR:///path|keyAWSSECRETS:///foo
 		other text her
@@ -40,6 +40,26 @@ func Test_ParserBlocks(t *testing.T) {
 				{string(config.ParamStorePrefix), "/config", "endpoint"},
 				{string(config.ParamStorePrefix), "/config", "port"},
 				{string(config.ParamStorePrefix), "/config", "qp2"},
+			},
+		},
+		"tokens touching each other in source after metadata": {
+			`foo stuyfsdfsf
+		foo=AWSPARAMSTR:///path|key[meta=val]AWSSECRETS:///foo
+		other text her
+		BAR=something
+				`, [][3]string{
+				{string(config.ParamStorePrefix), "/path", "key"},
+				{string(config.SecretMgrPrefix), "/foo", ""},
+			},
+		},
+		"tokens touching each other in source": {
+			`foo stuyfsdfsf
+		foo=AWSPARAMSTR:///pathAWSSECRETS:///foo
+		other text her
+		BAR=something
+				`, [][3]string{
+				{string(config.ParamStorePrefix), "/path", ""},
+				{string(config.SecretMgrPrefix), "/foo", ""},
 			},
 		},
 		"touching EOF single token": {
@@ -99,6 +119,12 @@ func Test_Parse_should_fail_on_metadata(t *testing.T) {
 			`AWSSECRETS:///foo|path.one[version=1.2.3`,
 			parser.ErrNoEndTagFound,
 		},
+		"when _end_tag_found with keysPath in the middle": {
+			`AWSSECRETS:///foo|path.one[version=1.2.3
+			more content here
+`,
+			parser.ErrNoEndTagFound,
+		},
 		"when no metadata has been supplied": {
 			`AWSSECRETS:///foo|path.one[]`,
 			parser.ErrMetadataEmpty,
@@ -132,6 +158,11 @@ func Test_Parse_should_pass_with_metadata_end_tag(t *testing.T) {
 	}{
 		"without keysPath": {
 			`AWSSECRETS:///foo[version=1.2.3]`,
+			`version=1.2.3`,
+		},
+		"without keysPath in the middle of content": {
+			`AWSSECRETS:///foo[version=1.2.3]
+`,
 			`version=1.2.3`,
 		},
 		"with keysPath": {

@@ -164,3 +164,21 @@ func Test_TokenParser_config(t *testing.T) {
 		})
 	}
 }
+
+func TestLookupIdent(t *testing.T) {
+	ttests := map[string]struct {
+		char   string
+		expect config.TokenType
+	}{
+		"new line": {"\n", config.NEW_LINE},
+		"dash":     {"-", config.TEXT},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			got := config.LookupIdent(tt.char)
+			if got != tt.expect {
+				t.Errorf("got %v wanted %v", got, tt.expect)
+			}
+		})
+	}
+}
