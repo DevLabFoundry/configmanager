@@ -53,7 +53,7 @@ func Test_ParserBlocks(t *testing.T) {
 			},
 		},
 		"tokens touching each other in source": {
-			`foo stuyfsdfsf
+			`foo stuyfsdfsf GCFOO VAbarAWbuX AZmore
 		foo=AWSPARAMSTR:///pathAWSSECRETS:///foo
 		other text her
 		BAR=something

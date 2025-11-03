@@ -17,7 +17,7 @@ var nonText = map[string]bool{
 	// this forces the lexer to not treat at as TEXT
 	// and enter the switch statement of the state machine
 	// NOTE: when a new implementation is added we should add it here
-	// AWS|AZure|GCP...
+	// AWS|AZure
 	"A": true,
 	// VAULT (HashiCorp)
 	"V": true,
@@ -96,7 +96,7 @@ func (l *Lexer) NextToken() config.Token {
 			if found, literal, imp := l.peekIsBeginOfToken([]config.ImplementationPrefix{config.GcpSecretsPrefix}, "GC"); found {
 				tok = config.Token{Type: config.BEGIN_CONFIGMANAGER_TOKEN, Literal: literal, ImpPrefix: imp}
 			} else {
-				// it is not a marker AW as text
+				// it is not a marker - GC literal as text
 				tok = config.Token{Type: config.TEXT, Literal: "GC"}
 			}
 		} else {
