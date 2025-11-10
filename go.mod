@@ -4,7 +4,7 @@ go 1.25.3
 
 require (
 	cloud.google.com/go/secretmanager v1.16.0
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.19.1
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.0
 	github.com/Azure/azure-sdk-for-go/sdk/data/azappconfig v1.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/data/aztables v1.4.0
@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.39.6
 	github.com/aws/aws-sdk-go-v2/config v1.31.17
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.39.11
-	github.com/aws/aws-sdk-go-v2/service/ssm v1.66.4
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.67.0
 	github.com/go-test/deep v1.1.1
 	github.com/googleapis/gax-go/v2 v2.15.0
 	github.com/hashicorp/vault/api v1.22.0
