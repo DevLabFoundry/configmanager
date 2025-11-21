@@ -8,8 +8,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 )
 
 type kvApi interface {
@@ -45,8 +45,8 @@ func NewKvScrtStore(ctx context.Context, token *config.ParsedTokenConfig, logger
 		token:  token,
 	}
 
-	srvInit := azServiceFromToken(token.StoreToken(), "https://%s.vault.azure.net", 1)
-	backingStore.strippedToken = srvInit.token
+	srvInit := AzServiceFromToken(token.StoreToken(), "https://%s.vault.azure.net", 1)
+	backingStore.strippedToken = srvInit.Token
 
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
@@ -54,7 +54,7 @@ func NewKvScrtStore(ctx context.Context, token *config.ParsedTokenConfig, logger
 		return nil, err
 	}
 
-	c, err := azsecrets.NewClient(srvInit.serviceUri, cred, nil)
+	c, err := azsecrets.NewClient(srvInit.ServiceUri, cred, nil)
 	if err != nil {
 		logger.Error("%v\n%w", err, ErrClientInitialization)
 		return nil, err
@@ -65,10 +65,14 @@ func NewKvScrtStore(ctx context.Context, token *config.ParsedTokenConfig, logger
 
 }
 
+func (s *KvScrtStore) WithSvc(svc kvApi) {
+	s.svc = svc
+}
+
 // setToken already happens in AzureKVClient in the constructor
 func (implmt *KvScrtStore) SetToken(token *config.ParsedTokenConfig) {}
 
-func (imp *KvScrtStore) Token() (string, error) {
+func (imp *KvScrtStore) Value() (string, error) {
 	imp.logger.Info("Concrete implementation AzKeyVault Secret")
 	imp.logger.Info("AzKeyVault Token: %s", imp.token.String())
 

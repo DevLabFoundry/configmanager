@@ -8,17 +8,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 
 	vault "github.com/hashicorp/vault/api"
 	auth "github.com/hashicorp/vault/api/auth/aws"
 )
 
-// vaultHelper provides a broken up string
-type vaultHelper struct {
-	path  string
-	token string
+// HashiVaultHelper provides a broken up string
+type HashiVaultHelper struct {
+	Path  string
+	Token string
 }
 
 type hashiVaultApi interface {
@@ -52,8 +52,8 @@ func NewVaultStore(ctx context.Context, token *config.ParsedTokenConfig, logger 
 	}
 
 	config := vault.DefaultConfig()
-	vt := splitToken(token.StoreToken())
-	imp.strippedToken = vt.token
+	vt := SplitHashiVaultToken(token.StoreToken())
+	imp.strippedToken = vt.Token
 	client, err := vault.NewClient(config)
 	if err != nil {
 		return nil, fmt.Errorf("%v\n%w", err, ErrClientInitialization)
@@ -66,8 +66,12 @@ func NewVaultStore(ctx context.Context, token *config.ParsedTokenConfig, logger 
 		}
 		client = awsclient
 	}
-	imp.svc = client.KVv2(vt.path)
+	imp.svc = client.KVv2(vt.Path)
 	return imp, nil
+}
+
+func (s *VaultStore) WithSvc(svc hashiVaultApi) {
+	s.svc = svc
 }
 
 // newVaultStoreWithAWSAuthIAM returns an initialised client with AWSIAMAuth
@@ -107,7 +111,7 @@ func (imp *VaultStore) SetToken(token *config.ParsedTokenConfig) {}
 // getTokenValue implements the underlying techonology
 // token retrieval and returns a stringified version
 // of the secret
-func (imp *VaultStore) Token() (string, error) {
+func (imp *VaultStore) Value() (string, error) {
 	imp.logger.Info("%s", "Concrete implementation HashiVault")
 	imp.logger.Info("Getting Secret: %s", imp.token)
 
@@ -145,14 +149,14 @@ func (imp *VaultStore) getSecret(ctx context.Context, token string, version stri
 	return imp.svc.Get(ctx, token)
 }
 
-func splitToken(token string) vaultHelper {
-	vh := vaultHelper{}
+func SplitHashiVaultToken(token string) HashiVaultHelper {
+	vh := HashiVaultHelper{}
 	// split token to extract the mount path
 	s := strings.Split(strings.TrimPrefix(token, "/"), "___")
 	// grab token and trim prefix if slash
-	vh.token = strings.TrimPrefix(strings.Join(s[1:], ""), "/")
+	vh.Token = strings.TrimPrefix(strings.Join(s[1:], ""), "/")
 	// assign mount path as extracted from input token
-	vh.path = s[0]
+	vh.Path = s[0]
 	return vh
 }
 

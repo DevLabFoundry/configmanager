@@ -8,16 +8,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/cmdutils"
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	log "github.com/DevLabFoundry/configmanager/v2/internal/log"
-	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
-	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/v3/generator"
+	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	log "github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
 	"github.com/spf13/cobra"
 )
 
 type mockCfgMgr struct {
-	parsedMap    generator.ParsedMap
+	parsedMap    generator.ReplacedToken
 	err          error
 	parsedString string
 	config       *config.GenVarsConfig
@@ -27,7 +27,13 @@ func (m mockCfgMgr) RetrieveWithInputReplaced(input string) (string, error) {
 	return m.parsedString, m.err
 }
 
-func (m mockCfgMgr) Retrieve(tokens []string) (generator.ParsedMap, error) {
+func (m mockCfgMgr) RetrieveReplacedBytes(input []byte) ([]byte, error) {
+	return []byte(m.parsedString), m.err
+}
+func (m mockCfgMgr) RetrieveReplacedString(input string) (string, error) {
+	return m.parsedString, m.err
+}
+func (m mockCfgMgr) Retrieve(tokens []string) (generator.ReplacedToken, error) {
 	return m.parsedMap, m.err
 }
 
@@ -61,15 +67,13 @@ func cmdTestHelper(t *testing.T, err error, got []byte, expect []string) {
 }
 
 func Test_GenerateFromCmd(t *testing.T) {
-	t.Parallel()
-
 	ttests := map[string]struct {
-		mockMap generator.ParsedMap
+		mockMap generator.ReplacedToken
 		tokens  []string
 		expect  []string
 	}{
 		"succeeds with 3 tokens": {
-			generator.ParsedMap{"FOO://bar/qusx": "aksujg", "FOO://bar/lorem": "", "FOO://bar/ducks": "sdhbjk0293"},
+			generator.ReplacedToken{"FOO://bar/qusx": "aksujg", "FOO://bar/lorem": "", "FOO://bar/ducks": "sdhbjk0293"},
 			[]string{"FOO://bar/qusx", "FOO://bar/lorem", "FOO://bar/ducks"},
 			[]string{"export QUSX='aksujg'", "export LOREM=''", "export DUCKS='sdhbjk0293'"},
 		},
@@ -106,8 +110,6 @@ func (m *mockWriter) Write(in []byte) (int, error) {
 }
 
 func Test_GenerateStrOut(t *testing.T) {
-	t.Parallel()
-
 	inputStr := `FOO://bar/qusx FOO://bar/lorem FOO://bar/ducks`
 	mockParsedStr := `aksujg fooLorem Mighty`
 	expect := []string{"aksujg", "fooLorem", "Mighty"}
@@ -210,7 +212,7 @@ func Test_CmdUtils_Errors_on(t *testing.T) {
 	t.Run("REtrieve from tokens in fetching ANY of the tokens", func(t *testing.T) {
 		m := &mockCfgMgr{
 			config:    config.NewConfig(),
-			parsedMap: generator.ParsedMap{},
+			parsedMap: generator.ReplacedToken{},
 			err:       fmt.Errorf("err in fetching tokens"),
 		}
 
@@ -225,7 +227,7 @@ func Test_CmdUtils_Errors_on(t *testing.T) {
 	t.Run("REtrieve from tokens in fetching SOME of the tokens", func(t *testing.T) {
 		m := &mockCfgMgr{
 			config:    config.NewConfig(),
-			parsedMap: generator.ParsedMap{"IMNP://foo": "bar"},
+			parsedMap: generator.ReplacedToken{"IMNP://foo": "bar"},
 			err:       fmt.Errorf("err in fetching tokens"),
 		}
 
@@ -239,7 +241,7 @@ func Test_CmdUtils_Errors_on(t *testing.T) {
 	t.Run("REtrieve from string in fetching SOME of the tokens", func(t *testing.T) {
 		m := &mockCfgMgr{
 			config:       config.NewConfig().WithOutputPath("stdout"),
-			parsedMap:    generator.ParsedMap{"IMNP://foo": "bar"},
+			parsedMap:    generator.ReplacedToken{"IMNP://foo": "bar"},
 			parsedString: `bar `,
 			err:          fmt.Errorf("err in fetching tokens"),
 		}

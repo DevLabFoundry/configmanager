@@ -4,8 +4,8 @@ import (
 	"context"
 	"os"
 
-	cfgmgr "github.com/DevLabFoundry/configmanager/v2/cmd/configmanager"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	cfgmgr "github.com/DevLabFoundry/configmanager/v3/cmd/configmanager"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 )
 
 func main() {

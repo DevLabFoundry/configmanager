@@ -11,8 +11,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azappconfig"
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 )
 
 // appConfApi
@@ -51,8 +51,8 @@ func NewAzAppConf(ctx context.Context, token *config.ParsedTokenConfig, logger l
 		token:  token,
 		logger: logger,
 	}
-	srvInit := azServiceFromToken(token.StoreToken(), "https://%s.azconfig.io", 1)
-	backingStore.strippedToken = srvInit.token
+	srvInit := AzServiceFromToken(token.StoreToken(), "https://%s.azconfig.io", 1)
+	backingStore.strippedToken = srvInit.Token
 
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
@@ -60,7 +60,7 @@ func NewAzAppConf(ctx context.Context, token *config.ParsedTokenConfig, logger l
 		return nil, err
 	}
 
-	c, err := azappconfig.NewClient(srvInit.serviceUri, cred, nil)
+	c, err := azappconfig.NewClient(srvInit.ServiceUri, cred, nil)
 	if err != nil {
 		logger.Error("failed to init the client: %v", err)
 		return nil, fmt.Errorf("%v\n%w", err, ErrClientInitialization)
@@ -71,6 +71,10 @@ func NewAzAppConf(ctx context.Context, token *config.ParsedTokenConfig, logger l
 
 }
 
+func (s *AzAppConf) WithSvc(svc appConfApi) {
+	s.svc = svc
+}
+
 // setTokenVal sets the token
 func (implmt *AzAppConf) SetToken(token *config.ParsedTokenConfig) {}
 
@@ -78,7 +82,7 @@ func (implmt *AzAppConf) SetToken(token *config.ParsedTokenConfig) {}
 // label can be specified
 // From this point then normal rules of configmanager apply,
 // including keySeperator and lookup.
-func (imp *AzAppConf) Token() (string, error) {
+func (imp *AzAppConf) Value() (string, error) {
 	imp.logger.Info("Concrete implementation AzAppConf")
 	imp.logger.Info("AzAppConf Token: %s", imp.token.String())
 

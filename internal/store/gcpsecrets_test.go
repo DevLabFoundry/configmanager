@@ -1,4 +1,4 @@
-package store
+package store_test
 
 import (
 	"context"
@@ -9,9 +9,10 @@ import (
 	"testing"
 
 	gcpsecretspb "cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
-	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/store"
+	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
 	"github.com/googleapis/gax-go/v2"
 )
 
@@ -19,6 +20,10 @@ type mockGcpSecretsApi func(ctx context.Context, req *gcpsecretspb.AccessSecretV
 
 func (m mockGcpSecretsApi) AccessSecretVersion(ctx context.Context, req *gcpsecretspb.AccessSecretVersionRequest, opts ...gax.CallOption) (*gcpsecretspb.AccessSecretVersionResponse, error) {
 	return m(ctx, req, opts...)
+}
+
+func (m mockGcpSecretsApi) Close() error {
+	return nil
 }
 
 var TEST_GCP_CREDS = []byte(`{
@@ -74,49 +79,76 @@ func gcpSecretsGetChecker(t *testing.T, req *gcpsecretspb.AccessSecretVersionReq
 }
 
 func Test_GetGcpSecretVarHappy(t *testing.T) {
-	// t.Parallel()
 
 	tests := map[string]struct {
-		token      string
+		token      func() *config.ParsedTokenConfig
 		expect     string
-		mockClient func(t *testing.T) gcpSecretsApi
-		config     *config.GenVarsConfig
+		mockClient func(t *testing.T) mockGcpSecretsApi
 	}{
-		"success": {"GCPSECRETS#/token/1", "someValue", func(t *testing.T) gcpSecretsApi {
-			return mockGcpSecretsApi(func(ctx context.Context, req *gcpsecretspb.AccessSecretVersionRequest, opts ...gax.CallOption) (*gcpsecretspb.AccessSecretVersionResponse, error) {
-				gcpSecretsGetChecker(t, req)
-				return &gcpsecretspb.AccessSecretVersionResponse{
-					Payload: &gcpsecretspb.SecretPayload{Data: []byte("someValue")},
-				}, nil
-			})
-		}, config.NewConfig().WithTokenSeparator("#").WithKeySeparator("|"),
+		"success": {
+			func() *config.ParsedTokenConfig {
+				tkn, _ := config.NewToken(config.GcpSecretsPrefix, *config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"))
+				tkn.WithSanitizedToken("/token/1")
+				tkn.WithKeyPath("")
+				tkn.WithMetadata("")
+				return tkn
+			},
+			"someValue", func(t *testing.T) mockGcpSecretsApi {
+				return mockGcpSecretsApi(func(ctx context.Context, req *gcpsecretspb.AccessSecretVersionRequest, opts ...gax.CallOption) (*gcpsecretspb.AccessSecretVersionResponse, error) {
+					gcpSecretsGetChecker(t, req)
+					return &gcpsecretspb.AccessSecretVersionResponse{
+						Payload: &gcpsecretspb.SecretPayload{Data: []byte("someValue")},
+					}, nil
+				})
+			},
 		},
-		"success with version": {"GCPSECRETS#/token/1[version=123]", "someValue", func(t *testing.T) gcpSecretsApi {
-			return mockGcpSecretsApi(func(ctx context.Context, req *gcpsecretspb.AccessSecretVersionRequest, opts ...gax.CallOption) (*gcpsecretspb.AccessSecretVersionResponse, error) {
-				gcpSecretsGetChecker(t, req)
-				return &gcpsecretspb.AccessSecretVersionResponse{
-					Payload: &gcpsecretspb.SecretPayload{Data: []byte("someValue")},
-				}, nil
-			})
-		}, config.NewConfig().WithTokenSeparator("#").WithKeySeparator("|"),
+		"success with version": {
+			func() *config.ParsedTokenConfig {
+				// "GCPSECRETS#/token/1[version=123]"
+				tkn, _ := config.NewToken(config.GcpSecretsPrefix, *config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"))
+				tkn.WithSanitizedToken("/token/1")
+				tkn.WithKeyPath("")
+				tkn.WithMetadata("version=123")
+				return tkn
+			}, "someValue", func(t *testing.T) mockGcpSecretsApi {
+				return mockGcpSecretsApi(func(ctx context.Context, req *gcpsecretspb.AccessSecretVersionRequest, opts ...gax.CallOption) (*gcpsecretspb.AccessSecretVersionResponse, error) {
+					gcpSecretsGetChecker(t, req)
+					return &gcpsecretspb.AccessSecretVersionResponse{
+						Payload: &gcpsecretspb.SecretPayload{Data: []byte("someValue")},
+					}, nil
+				})
+			},
 		},
-		"error": {"GCPSECRETS#/token/1", "unable to retrieve secret", func(t *testing.T) gcpSecretsApi {
-			return mockGcpSecretsApi(func(ctx context.Context, req *gcpsecretspb.AccessSecretVersionRequest, opts ...gax.CallOption) (*gcpsecretspb.AccessSecretVersionResponse, error) {
-				gcpSecretsGetChecker(t, req)
-				return nil, fmt.Errorf("unable to retrieve secret")
-			})
-		}, config.NewConfig().WithTokenSeparator("#").WithKeySeparator("|"),
+		"error": {
+			func() *config.ParsedTokenConfig {
+				// "GCPSECRETS#/token/1"
+				tkn, _ := config.NewToken(config.GcpSecretsPrefix, *config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"))
+				tkn.WithSanitizedToken("/token/1")
+				tkn.WithKeyPath("")
+				tkn.WithMetadata("")
+				return tkn
+			}, "unable to retrieve secret", func(t *testing.T) mockGcpSecretsApi {
+				return mockGcpSecretsApi(func(ctx context.Context, req *gcpsecretspb.AccessSecretVersionRequest, opts ...gax.CallOption) (*gcpsecretspb.AccessSecretVersionResponse, error) {
+					gcpSecretsGetChecker(t, req)
+					return nil, fmt.Errorf("unable to retrieve secret")
+				})
+			},
 		},
 		"found but empty": {
-			"GCPSECRETS#/token/1",
+			func() *config.ParsedTokenConfig {
+				tkn, _ := config.NewToken(config.GcpSecretsPrefix, *config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"))
+				tkn.WithSanitizedToken("/token/1")
+				tkn.WithKeyPath("")
+				tkn.WithMetadata("")
+				return tkn
+			},
 			"",
-			func(t *testing.T) gcpSecretsApi {
+			func(t *testing.T) mockGcpSecretsApi {
 				return mockGcpSecretsApi(func(ctx context.Context, req *gcpsecretspb.AccessSecretVersionRequest, opts ...gax.CallOption) (*gcpsecretspb.AccessSecretVersionResponse, error) {
 					gcpSecretsGetChecker(t, req)
 					return &gcpsecretspb.AccessSecretVersionResponse{}, nil
 				})
 			},
-			config.NewConfig().WithTokenSeparator("#").WithKeySeparator("|"),
 		},
 	}
 	for name, tt := range tests {
@@ -126,18 +158,17 @@ func Test_GetGcpSecretVarHappy(t *testing.T) {
 			defer fixture.delete(fixture.name)
 
 			os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", fixture.name)
-			token, _ := config.NewParsedTokenConfig(tt.token, *tt.config)
 
-			impl, err := NewGcpSecrets(context.TODO(), log.New(io.Discard))
+			impl, err := store.NewGcpSecrets(context.TODO(), log.New(io.Discard))
 
 			if err != nil {
 				t.Errorf(testutils.TestPhrase, err.Error(), nil)
 			}
 
-			impl.svc = tt.mockClient(t)
-			impl.close = func() error { return nil }
-			impl.SetToken(token)
-			got, err := impl.Token()
+			impl.WithSvc(tt.mockClient(t))
+
+			impl.SetToken(tt.token())
+			got, err := impl.Value()
 
 			if err != nil {
 				if err.Error() != tt.expect {

@@ -6,8 +6,8 @@ import (
 
 	gcpsecrets "cloud.google.com/go/secretmanager/apiv1"
 	gcpsecretspb "cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/googleapis/gax-go/v2"
 )
 
@@ -42,6 +42,10 @@ func NewGcpSecrets(ctx context.Context, logger log.ILogger) (*GcpSecrets, error)
 	}, nil
 }
 
+func (s *GcpSecrets) WithSvc(svc gcpSecretsApi) {
+	s.svc = svc
+}
+
 func (imp *GcpSecrets) SetToken(token *config.ParsedTokenConfig) {
 	storeConf := &GcpSecretsConfig{}
 	_ = token.ParseMetadata(storeConf)
@@ -49,7 +53,7 @@ func (imp *GcpSecrets) SetToken(token *config.ParsedTokenConfig) {
 	imp.config = storeConf
 }
 
-func (imp *GcpSecrets) Token() (string, error) {
+func (imp *GcpSecrets) Value() (string, error) {
 	// Close client currently as new one would be created per iteration
 	defer func() {
 		_ = imp.close()

@@ -12,17 +12,20 @@ contexts:
       name: mirror.gcr.io/bash:5.0.18-alpine3.22
 
 pipelines:
-  gha:unit:test:
+  unit:test:
     - pipeline: test:unit 
       env:
         ROOT_PKG_NAME: github.com/DevLabFoundry
+
+  gha:unit:test:
+    - pipeline: unit:test
     - task: sonar:coverage:prep
-      depends_on: test:unit
+      depends_on: unit:test
 
   show_coverage:
-    - pipeline: test:unit
+    - pipeline: unit:test
     - task: show:coverage
-      depends_on: test:unit
+      depends_on: unit:test
 
   build:bin:
     - task: clean
@@ -53,7 +56,7 @@ tasks:
       - |
         mkdir -p .deps
         unset GOTOOLCHAIN
-        ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Revision=${REVISION}\" -extldflags -static"
+        ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v3/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/v3/cmd/configmanager.Revision=${REVISION}\" -extldflags -static"
         GOPATH=/eirctl/.deps GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false -ldflags="$ldflags" \
         -o ./dist/configmanager-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX} ./cmd
         echo "---"

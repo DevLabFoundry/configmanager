@@ -3,8 +3,8 @@ package store
 import (
 	"context"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconf "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
@@ -42,6 +42,10 @@ func NewSecretsMgr(ctx context.Context, logger log.ILogger) (*SecretsMgr, error)
 
 }
 
+func (s *SecretsMgr) WithSvc(svc secretsMgrApi) {
+	s.svc = svc
+}
+
 func (imp *SecretsMgr) SetToken(token *config.ParsedTokenConfig) {
 	storeConf := &SecretsMgrConfig{}
 	if err := token.ParseMetadata(storeConf); err != nil {
@@ -51,7 +55,7 @@ func (imp *SecretsMgr) SetToken(token *config.ParsedTokenConfig) {
 	imp.config = storeConf
 }
 
-func (imp *SecretsMgr) Token() (string, error) {
+func (imp *SecretsMgr) Value() (string, error) {
 	imp.logger.Info("Concrete implementation SecretsManager")
 	imp.logger.Debug("SecretsManager Token: %s", imp.token.String())
 

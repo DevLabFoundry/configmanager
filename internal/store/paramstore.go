@@ -3,8 +3,8 @@ package store
 import (
 	"context"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConf "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -41,6 +41,10 @@ func NewParamStore(ctx context.Context, logger log.ILogger) (*ParamStore, error)
 	}, nil
 }
 
+func (s *ParamStore) WithSvc(svc paramStoreApi) {
+	s.svc = svc
+}
+
 func (imp *ParamStore) SetToken(token *config.ParsedTokenConfig) {
 	storeConf := &ParamStrConfig{}
 	_ = token.ParseMetadata(storeConf)
@@ -48,7 +52,7 @@ func (imp *ParamStore) SetToken(token *config.ParsedTokenConfig) {
 	imp.config = storeConf
 }
 
-func (imp *ParamStore) Token() (string, error) {
+func (imp *ParamStore) Value() (string, error) {
 	imp.logger.Info("%s", "Concrete implementation ParameterStore")
 	imp.logger.Info("ParamStore Token: %s", imp.token.String())
 

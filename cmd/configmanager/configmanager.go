@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/DevLabFoundry/configmanager/v2"
-	"github.com/DevLabFoundry/configmanager/v2/internal/cmdutils"
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
-	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/v3"
+	"github.com/DevLabFoundry/configmanager/v3/generator"
+	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/spf13/cobra"
 )
 
@@ -46,8 +46,8 @@ func NewRootCmd(logger log.ILogger) *Root { //channelOut, channelErr io.Writer
 	}
 
 	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.verbose, "verbose", "v", false, "Verbosity level")
-	rc.Cmd.PersistentFlags().StringVarP(&rc.rootFlags.tokenSeparator, "token-separator", "s", "#", "Separator to use to mark concrete store and the key within it")
-	rc.Cmd.PersistentFlags().StringVarP(&rc.rootFlags.keySeparator, "key-separator", "k", "|", "Separator to use to mark a key look up in a map. e.g. AWSSECRETS#/token/map|key1")
+	rc.Cmd.PersistentFlags().StringVarP(&rc.rootFlags.tokenSeparator, "token-separator", "s", "://", "Separator to use to mark concrete store and the key within it")
+	rc.Cmd.PersistentFlags().StringVarP(&rc.rootFlags.keySeparator, "key-separator", "k", "|", "Separator to use to mark a key look up in a map. e.g. AWSSECRETS:///token/map|key1")
 	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.enableEnvSubst, "enable-envsubst", "e", false, "Enable envsubst on input. This will fail on any unset or empty variables")
 	addSubCmds(rc)
 	return rc
