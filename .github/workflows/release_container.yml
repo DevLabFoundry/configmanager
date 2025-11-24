@@ -2,7 +2,7 @@ name: Publish Container
 
 on:
   workflow_run:
-    workflows: ['Lint and Test']
+    workflows: ['CI']
     types:
       - completed
     branches: 
