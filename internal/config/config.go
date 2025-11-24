@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/DevLabFoundry/configmanager/v3/plugins"
 )
 
 const (
@@ -171,6 +173,18 @@ func (ptc *ParsedTokenConfig) WithSanitizedToken(v string) {
 }
 
 func (t *ParsedTokenConfig) ParseMetadata(metadataTyp any) error {
+	// empty map will be parsed as `{}` still resulting in a valid json
+	// and successful unmarshalling but default value pointer struct
+	if err := json.Unmarshal(fmt.Appendf(nil, t.parseMetadata()), metadataTyp); err != nil {
+		// It would very hard to test this since
+		// we are forcing the key and value to be strings
+		// return non-filled pointer
+		return err
+	}
+	return nil
+}
+
+func (t *ParsedTokenConfig) parseMetadata() string {
 	// crude json like builder from key/val tags
 	// since we are only ever dealing with a string input
 	// extracted from the token there is little chance panic would occur here
@@ -182,16 +196,7 @@ func (t *ParsedTokenConfig) ParseMetadata(metadataTyp any) error {
 			metaMap = append(metaMap, fmt.Sprintf(`"%s":"%s"`, mapKeyVal[0], mapKeyVal[1]))
 		}
 	}
-
-	// empty map will be parsed as `{}` still resulting in a valid json
-	// and successful unmarshalling but default value pointer struct
-	if err := json.Unmarshal(fmt.Appendf(nil, `{%s}`, strings.Join(metaMap, ",")), metadataTyp); err != nil {
-		// It would very hard to test this since
-		// we are forcing the key and value to be strings
-		// return non-filled pointer
-		return err
-	}
-	return nil
+	return fmt.Sprintf(`{%s}`, strings.Join(metaMap, ","))
 }
 
 // StoreToken returns the sanitized token without:
@@ -242,4 +247,26 @@ func (t *ParsedTokenConfig) Prefix() ImplementationPrefix {
 
 func (t *ParsedTokenConfig) TokenSeparator() string {
 	return t.tokenSeparator
+}
+
+func (t *ParsedTokenConfig) JSONMessagExchange() (*plugins.MessagExchange, error) {
+	md := map[string]any{}
+	if err := json.Unmarshal([]byte(t.parseMetadata()), &md); err != nil {
+		return nil, err
+	}
+
+	jme := &plugins.MessagExchange{
+		Token:    t.StoreToken(),
+		Metadata: md,
+	}
+
+	return jme, nil
+}
+
+func (t *ParsedTokenConfig) JSONMessagExchangeBytes() ([]byte, error) {
+	j, err := t.JSONMessagExchange()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(j)
 }

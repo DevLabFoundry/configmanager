@@ -46,7 +46,7 @@ type ConfigManager struct {
 func New(ctx context.Context) *ConfigManager {
 	cm := &ConfigManager{}
 	cm.Config = config.NewConfig()
-	cm.generator = generator.NewGenerator(ctx).WithConfig(cm.Config)
+	cm.generator = generator.New(ctx).WithConfig(cm.Config)
 	cm.logger = log.New(io.Discard)
 	return cm
 }

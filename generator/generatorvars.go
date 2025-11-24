@@ -43,26 +43,6 @@ func (rtm *RawTokenConfig) RawTokenMap() map[string]*config.ParsedTokenConfig {
 	return rtm.tokenMap
 }
 
-// type tokenMapSafe struct {
-// 	mu       *sync.Mutex
-// 	tokenMap ReplacedToken
-// }
-
-// func (tms *tokenMapSafe) getTokenMap() ReplacedToken {
-// 	tms.mu.Lock()
-// 	defer tms.mu.Unlock()
-// 	return tms.tokenMap
-// }
-
-// func (tms *tokenMapSafe) addKeyVal(key *config.ParsedTokenConfig, val string) {
-// 	tms.mu.Lock()
-// 	defer tms.mu.Unlock()
-// 	// NOTE: still use the metadata in the key
-// 	// there could be different versions / labels for the same token and hence different values
-// 	// However the JSONpath look up
-// 	tms.tokenMap[key.String()] = keySeparatorLookup(key, val)
-// }
-
 // keySeparatorLookup checks if the key contains
 // keySeparator character
 // If it does contain one then it tries to parse

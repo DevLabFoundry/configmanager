@@ -17,32 +17,32 @@ import (
 	"github.com/DevLabFoundry/configmanager/v3/internal/strategy"
 )
 
-// GenVars is the main struct holding the
+// Generator is the main struct holding the
 // strategy patterns iface
 // any initialised config if overridded with withers
 // as well as the final outString and the initial rawMap
 // which wil be passed in a loop into a goroutine to perform the
 // relevant strategy network calls to the config store implementations
-type GenVars struct {
+type Generator struct {
 	Logger   log.ILogger
 	strategy strategy.StrategyFuncMap
 	ctx      context.Context
 	config   config.GenVarsConfig
 }
 
-type Opts func(*GenVars)
+type Opts func(*Generator)
 
-// NewGenerator returns a new instance of Generator
+// New returns a new instance of Generator
 // with a default strategy pattern wil be overwritten
 // during the first run of a found tokens map
-func NewGenerator(ctx context.Context, opts ...Opts) *GenVars {
+func New(ctx context.Context, opts ...Opts) *Generator {
 	// defaultStrategy := NewDefatultStrategy()
-	return newGenVars(ctx, opts...)
+	return new(ctx, opts...)
 }
 
-func newGenVars(ctx context.Context, opts ...Opts) *GenVars {
+func new(ctx context.Context, opts ...Opts) *Generator {
 	conf := config.NewConfig()
-	g := &GenVars{
+	g := &Generator{
 		Logger: log.New(io.Discard),
 		ctx:    ctx,
 		// return using default config
@@ -61,13 +61,13 @@ func newGenVars(ctx context.Context, opts ...Opts) *GenVars {
 // WithStrategyMap
 //
 // Adds addtional funcs for storageRetrieval used for testing only
-func (c *GenVars) WithStrategyMap(sm strategy.StrategyFuncMap) *GenVars {
+func (c *Generator) WithStrategyMap(sm strategy.StrategyFuncMap) *Generator {
 	c.strategy = sm
 	return c
 }
 
 // WithConfig uses custom config
-func (c *GenVars) WithConfig(cfg *config.GenVarsConfig) *GenVars {
+func (c *Generator) WithConfig(cfg *config.GenVarsConfig) *Generator {
 	// backwards compatibility
 	if cfg != nil {
 		c.config = *cfg
@@ -76,13 +76,13 @@ func (c *GenVars) WithConfig(cfg *config.GenVarsConfig) *GenVars {
 }
 
 // WithContext uses caller passed context
-func (c *GenVars) WithContext(ctx context.Context) *GenVars {
+func (c *Generator) WithContext(ctx context.Context) *Generator {
 	c.ctx = ctx
 	return c
 }
 
 // Config gets Config on the GenVars
-func (c *GenVars) Config() *config.GenVarsConfig {
+func (c *Generator) Config() *config.GenVarsConfig {
 	return &c.config
 }
 
@@ -90,7 +90,7 @@ func (c *GenVars) Config() *config.GenVarsConfig {
 // the standard pattern of a token should follow a path like string
 //
 // Called only from a slice of tokens
-func (c *GenVars) Generate(tokens []string) (ReplacedToken, error) {
+func (c *Generator) Generate(tokens []string) (ReplacedToken, error) {
 
 	ntm, err := c.DiscoverTokens(strings.Join(tokens, "\n"))
 	if err != nil {
@@ -112,7 +112,7 @@ var ErrTokenDiscovery = errors.New("failed to discover tokens")
 // the standard pattern of a token should follow a path like string
 //
 // Called only from a slice of tokens
-func (c *GenVars) DiscoverTokens(text string) (NormalizedTokenSafe, error) {
+func (c *Generator) DiscoverTokens(text string) (NormalizedTokenSafe, error) {
 
 	rtm := NewRawTokenConfig()
 
@@ -144,7 +144,7 @@ func IsParsed(v any, trm ReplacedToken) bool {
 // Captures the response/error in TokenResponse struct
 // It then denormalizes the NormalizedTokenSafe back to a ReplacedToken map
 // which stores the values for each token to be returned to the caller
-func (c *GenVars) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
+func (c *Generator) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
 	if len(ntm.normalizedTokenMap) < 1 {
 		c.Logger.Debug("no replaceable tokens found in input")
 		return nil, nil
@@ -232,7 +232,7 @@ func (n NormalizedTokenSafe) GetMap() map[string]*NormalizedToken {
 	return n.normalizedTokenMap
 }
 
-func (c *GenVars) NormalizeRawToken(rtm *RawTokenConfig) NormalizedTokenSafe {
+func (c *Generator) NormalizeRawToken(rtm *RawTokenConfig) NormalizedTokenSafe {
 	ntm := NormalizedTokenSafe{mu: &sync.Mutex{}, normalizedTokenMap: make(map[string]*NormalizedToken)}
 
 	for _, r := range rtm.RawTokenMap() {

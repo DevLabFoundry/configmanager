@@ -73,7 +73,7 @@ func cmdutilsInit(rootCmd *Root, cmd *cobra.Command, path string) (*cmdutils.Cmd
 
 	cm := configmanager.New(cmd.Context())
 	cm.Config.WithTokenSeparator(rootCmd.rootFlags.tokenSeparator).WithOutputPath(path).WithKeySeparator(rootCmd.rootFlags.keySeparator).WithEnvSubst(rootCmd.rootFlags.enableEnvSubst)
-	gnrtr := generator.NewGenerator(cmd.Context(), func(gv *generator.GenVars) {
+	gnrtr := generator.New(cmd.Context(), func(gv *generator.Generator) {
 		if rootCmd.rootFlags.verbose {
 			rootCmd.logger.SetLevel(log.DebugLvl)
 		}

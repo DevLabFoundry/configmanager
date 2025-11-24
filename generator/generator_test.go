@@ -34,7 +34,7 @@ func TestGenerate(t *testing.T) {
 			return m, nil
 		}
 
-		g := generator.NewGenerator(context.TODO(), func(gv *generator.GenVars) {
+		g := generator.New(context.TODO(), func(gv *generator.Generator) {
 			gv.Logger = log.New(&bytes.Buffer{})
 		})
 		g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: custFunc})
@@ -54,7 +54,7 @@ func TestGenerate(t *testing.T) {
 			return m, nil
 		}
 
-		g := generator.NewGenerator(context.TODO())
+		g := generator.New(context.TODO())
 		g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: custFunc})
 		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
 
@@ -72,7 +72,7 @@ func TestGenerate(t *testing.T) {
 			return m, nil
 		}
 
-		g := generator.NewGenerator(context.TODO())
+		g := generator.New(context.TODO())
 		g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: custFunc})
 		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token|key1.key2"})
 
@@ -129,7 +129,7 @@ func TestGenerate_withKeys_lookup(t *testing.T) {
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
-			g := generator.NewGenerator(context.TODO())
+			g := generator.New(context.TODO())
 			g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: tt.custFunc})
 			got, err := g.Generate([]string{tt.token})
 
@@ -175,7 +175,7 @@ func Test_IsParsed(t *testing.T) {
 func TestGenVars_NormalizeRawToken(t *testing.T) {
 
 	t.Run("multiple tokens", func(t *testing.T) {
-		g := generator.NewGenerator(context.TODO())
+		g := generator.New(context.TODO())
 
 		input := `GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
 			GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|a
@@ -298,7 +298,7 @@ func Test_ConfigManager_DiscoverTokens(t *testing.T) {
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
 			config.VarPrefix = map[config.ImplementationPrefix]bool{"AWSPARAMSTR": true}
-			g := generator.NewGenerator(context.TODO())
+			g := generator.New(context.TODO())
 			g.Config().WithTokenSeparator(tt.separator)
 			gdt, err := g.DiscoverTokens(tt.input)
 			if err != nil {
@@ -319,7 +319,7 @@ func Test_ConfigManager_DiscoverTokens(t *testing.T) {
 }
 
 func Test_Generate_EnsureRaceFree(t *testing.T) {
-	g := generator.NewGenerator(context.TODO())
+	g := generator.New(context.TODO())
 
 	input := `
 fg
