@@ -1,9 +1,10 @@
-package main
+package impl
 
 import (
 	"context"
 
 	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/DevLabFoundry/configmanager/v3/plugins"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConf "github.com/aws/aws-sdk-go-v2/config"
@@ -19,13 +20,14 @@ type ParamStore struct {
 	ctx    context.Context
 	config *ParamStrConfig
 	token  *config.ParsedTokenConfig
+	logger log.ILogger
 }
 
 type ParamStrConfig struct {
 	// reserved for potential future use
 }
 
-func NewParamStore(ctx context.Context) (*ParamStore, error) {
+func NewParamStore(ctx context.Context, logger log.ILogger) (*ParamStore, error) {
 	cfg, err := awsConf.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, err
@@ -33,8 +35,9 @@ func NewParamStore(ctx context.Context) (*ParamStore, error) {
 	c := ssm.NewFromConfig(cfg)
 
 	return &ParamStore{
-		svc: c,
-		ctx: ctx,
+		svc:    c,
+		logger: logger,
+		ctx:    ctx,
 	}, nil
 }
 
@@ -42,12 +45,12 @@ func (s *ParamStore) WithSvc(svc paramStoreApi) {
 	s.svc = svc
 }
 
-func (imp *ParamStore) Value(token *plugins.MessagExchange) (string, error) {
-	// imp.logger.Info("%s", "Concrete implementation ParameterStore")
-	// imp.logger.Info("ParamStore Token: %s", token.Token)
+func (imp *ParamStore) Value(token string, metadata []byte) (string, error) {
+	imp.logger.Info("Concrete implementation ParameterStore")
+	imp.logger.Info("ParamStore Token: %s", token)
 
 	input := &ssm.GetParameterInput{
-		Name:           aws.String(token.Token),
+		Name:           aws.String(token),
 		WithDecryption: aws.Bool(true),
 	}
 	ctx, cancel := context.WithCancel(imp.ctx)
@@ -55,13 +58,13 @@ func (imp *ParamStore) Value(token *plugins.MessagExchange) (string, error) {
 
 	result, err := imp.svc.GetParameter(ctx, input)
 	if err != nil {
-		// imp.logger.Error(plugins.ImplementationNetworkErr, config.ParamStorePrefix, err, token)
+		imp.logger.Error(plugins.ImplementationNetworkErr, config.ParamStorePrefix, err, token)
 		return "", err
 	}
 
 	if result.Parameter.Value != nil {
 		return *result.Parameter.Value, nil
 	}
-	// imp.logger.Error("value retrieved but empty for token: %v", imp.token)
+	imp.logger.Error("value retrieved but empty for token: %v", imp.token)
 	return "", nil
 }

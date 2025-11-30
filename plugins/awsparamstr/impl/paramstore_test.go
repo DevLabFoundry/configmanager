@@ -1,4 +1,4 @@
-package main_test
+package impl_test
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 
 	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
-	"github.com/DevLabFoundry/configmanager/v3/internal/store"
 	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/v3/plugins/awsparamstr/impl"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
 )
@@ -131,13 +131,13 @@ func Test_GetParamStore(t *testing.T) {
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			impl, err := store.NewParamStore(context.TODO(), log.New(io.Discard))
+			impl, err := impl.NewParamStore(context.TODO(), log.New(io.Discard))
 			if err != nil {
 				t.Errorf(testutils.TestPhrase, err.Error(), nil)
 			}
 			impl.WithSvc(tt.mockClient(t))
-			impl.SetToken(tt.token())
-			got, err := impl.Value()
+
+			got, err := impl.Value(tt.token().StoreToken(), []byte{})
 			if err != nil {
 				if err.Error() != tt.expect {
 					t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)

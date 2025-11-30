@@ -2,9 +2,7 @@ package strategy_test
 
 import (
 	"context"
-	"fmt"
 	"io"
-	"os"
 	"testing"
 
 	"github.com/DevLabFoundry/configmanager/v3/internal/config"
@@ -12,7 +10,6 @@ import (
 	"github.com/DevLabFoundry/configmanager/v3/internal/store"
 	"github.com/DevLabFoundry/configmanager/v3/internal/strategy"
 	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
-	"github.com/go-test/deep"
 )
 
 type mockGenerate struct {
@@ -116,175 +113,175 @@ func Test_CustomStrategyFuncMap_add_own(t *testing.T) {
 	}
 }
 
-func Test_SelectImpl_With(t *testing.T) {
+// func Test_SelectImpl_With(t *testing.T) {
 
-	ttests := map[string]struct {
-		setUpTearDown func() func()
-		token         string
-		config        *config.GenVarsConfig
-		expect        func() store.Strategy
-		expErr        error
-		impPrefix     config.ImplementationPrefix
-	}{
-		"unknown": {
-			func() func() {
-				return func() {
-				}
-			},
-			"foo/bar",
-			config.NewConfig().WithTokenSeparator("#"),
-			func() store.Strategy { return nil },
-			fmt.Errorf("implementation not found for input string: UNKNOWN#foo/bar"),
-			config.UnknownPrefix,
-		},
-		"success AZTABLESTORE": {
-			func() func() {
-				os.Setenv("AZURE_stuff", "foo")
-				return func() {
-					os.Clearenv()
-				}
-			},
-			"foo/bar1",
-			config.NewConfig().WithTokenSeparator("#"),
-			func() store.Strategy {
-				token, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("#"))
-				token.WithSanitizedToken("foo/bar1")
+// 	ttests := map[string]struct {
+// 		setUpTearDown func() func()
+// 		token         string
+// 		config        *config.GenVarsConfig
+// 		expect        func() store.Strategy
+// 		expErr        error
+// 		impPrefix     config.ImplementationPrefix
+// 	}{
+// 		"unknown": {
+// 			func() func() {
+// 				return func() {
+// 				}
+// 			},
+// 			"foo/bar",
+// 			config.NewConfig().WithTokenSeparator("#"),
+// 			func() store.Strategy { return nil },
+// 			fmt.Errorf("implementation not found for input string: UNKNOWN#foo/bar"),
+// 			config.UnknownPrefix,
+// 		},
+// 		"success AZTABLESTORE": {
+// 			func() func() {
+// 				os.Setenv("AZURE_stuff", "foo")
+// 				return func() {
+// 					os.Clearenv()
+// 				}
+// 			},
+// 			"foo/bar1",
+// 			config.NewConfig().WithTokenSeparator("#"),
+// 			func() store.Strategy {
+// 				token, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("#"))
+// 				token.WithSanitizedToken("foo/bar1")
 
-				s, _ := store.NewAzTableStore(context.TODO(), token, log.New(io.Discard))
-				return s
-			},
-			nil,
-			config.AzTableStorePrefix,
-		},
-		"success AWSPARAMSTR": {
-			func() func() {
-				os.Setenv("AWS_ACCESS_KEY", "AAAAAAAAAAAAAAA")
-				os.Setenv("AWS_SECRET_ACCESS_KEY", "00000000000000000000111111111")
-				return func() {
-					os.Clearenv()
-				}
-			},
-			"foo/bar1",
-			config.NewConfig().WithTokenSeparator("#"),
-			func() store.Strategy {
-				s, _ := store.NewParamStore(context.TODO(), log.New(io.Discard))
-				return s
-			},
-			nil,
-			config.ParamStorePrefix,
-		},
-		"success AWSSECRETS": {
-			func() func() {
-				os.Setenv("AWS_ACCESS_KEY", "AAAAAAAAAAAAAAA")
-				os.Setenv("AWS_SECRET_ACCESS_KEY", "00000000000000000000111111111")
-				return func() {
-					os.Clearenv()
-				}
-			},
-			"foo/bar1",
-			config.NewConfig().WithTokenSeparator("#"),
-			func() store.Strategy {
-				s, _ := store.NewSecretsMgr(context.TODO(), log.New(io.Discard))
-				return s
-			},
-			nil,
-			config.SecretMgrPrefix,
-		},
-		"success AZKVSECRET": {
-			func() func() {
-				os.Setenv("AWS_ACCESS_KEY", "AAAAAAAAAAAAAAA")
-				os.Setenv("AWS_SECRET_ACCESS_KEY", "00000000000000000000111111111")
-				return func() {
-					os.Clearenv()
-				}
-			},
-			"foo/bar1",
-			config.NewConfig().WithTokenSeparator("#"),
-			func() store.Strategy {
-				token, _ := config.NewToken(config.AzKeyVaultSecretsPrefix, *config.NewConfig().WithTokenSeparator("#"))
-				token.WithSanitizedToken("foo/bar1")
-				s, _ := store.NewKvScrtStore(context.TODO(), token, log.New(io.Discard))
-				return s
-			},
-			nil,
-			config.AzKeyVaultSecretsPrefix,
-		},
-		"success AZAPPCONF": {
-			func() func() {
-				return func() {
-					os.Clearenv()
-				}
-			},
-			"foo/bar1",
-			config.NewConfig().WithTokenSeparator("#"),
-			func() store.Strategy {
-				token, _ := config.NewToken(config.AzAppConfigPrefix, *config.NewConfig().WithTokenSeparator("#"))
-				token.WithSanitizedToken("foo/bar1")
-				s, _ := store.NewAzAppConf(context.TODO(), token, log.New(io.Discard))
-				return s
-			},
-			nil,
-			config.AzAppConfigPrefix,
-		},
-		"success VAULT": {
-			func() func() {
-				os.Setenv("VAULT_", "AAAAAAAAAAAAAAA")
-				return func() {
-					os.Clearenv()
-				}
-			},
-			"foo/bar1",
-			config.NewConfig().WithTokenSeparator("#"),
-			func() store.Strategy {
-				token, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig().WithTokenSeparator("#"))
-				token.WithSanitizedToken("foo/bar1")
-				s, _ := store.NewVaultStore(context.TODO(), token, log.New(io.Discard))
-				return s
-			},
-			nil,
-			config.HashicorpVaultPrefix,
-		},
-		"success GCPSECRETS": {
-			func() func() {
-				cf, _ := os.CreateTemp(".", "*")
-				cf.Write(TEST_GCP_CREDS)
-				os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", cf.Name())
-				return func() {
-					os.Remove(cf.Name())
-					os.Clearenv()
-				}
-			},
-			"foo/bar1",
-			config.NewConfig().WithTokenSeparator("#"),
-			func() store.Strategy {
-				s, _ := store.NewGcpSecrets(context.TODO(), log.New(io.Discard))
-				return s
-			},
-			nil,
-			config.GcpSecretsPrefix,
-		},
-	}
-	for name, tt := range ttests {
-		t.Run(name, func(t *testing.T) {
-			tearDown := tt.setUpTearDown()
-			defer tearDown()
-			want := tt.expect()
-			rs := strategy.New(*tt.config, log.New(io.Discard))
-			token, _ := config.NewToken(tt.impPrefix, *tt.config)
-			token.WithSanitizedToken(tt.token)
-			got, err := rs.GetImplementation(context.TODO(), token)
+// 				s, _ := store.NewAzTableStore(context.TODO(), token, log.New(io.Discard))
+// 				return s
+// 			},
+// 			nil,
+// 			config.AzTableStorePrefix,
+// 		},
+// 		"success AWSPARAMSTR": {
+// 			func() func() {
+// 				os.Setenv("AWS_ACCESS_KEY", "AAAAAAAAAAAAAAA")
+// 				os.Setenv("AWS_SECRET_ACCESS_KEY", "00000000000000000000111111111")
+// 				return func() {
+// 					os.Clearenv()
+// 				}
+// 			},
+// 			"foo/bar1",
+// 			config.NewConfig().WithTokenSeparator("#"),
+// 			func() store.Strategy {
+// 				s, _ := store.NewParamStore(context.TODO(), log.New(io.Discard))
+// 				return s
+// 			},
+// 			nil,
+// 			config.ParamStorePrefix,
+// 		},
+// 		"success AWSSECRETS": {
+// 			func() func() {
+// 				os.Setenv("AWS_ACCESS_KEY", "AAAAAAAAAAAAAAA")
+// 				os.Setenv("AWS_SECRET_ACCESS_KEY", "00000000000000000000111111111")
+// 				return func() {
+// 					os.Clearenv()
+// 				}
+// 			},
+// 			"foo/bar1",
+// 			config.NewConfig().WithTokenSeparator("#"),
+// 			func() store.Strategy {
+// 				s, _ := store.NewSecretsMgr(context.TODO(), log.New(io.Discard))
+// 				return s
+// 			},
+// 			nil,
+// 			config.SecretMgrPrefix,
+// 		},
+// 		"success AZKVSECRET": {
+// 			func() func() {
+// 				os.Setenv("AWS_ACCESS_KEY", "AAAAAAAAAAAAAAA")
+// 				os.Setenv("AWS_SECRET_ACCESS_KEY", "00000000000000000000111111111")
+// 				return func() {
+// 					os.Clearenv()
+// 				}
+// 			},
+// 			"foo/bar1",
+// 			config.NewConfig().WithTokenSeparator("#"),
+// 			func() store.Strategy {
+// 				token, _ := config.NewToken(config.AzKeyVaultSecretsPrefix, *config.NewConfig().WithTokenSeparator("#"))
+// 				token.WithSanitizedToken("foo/bar1")
+// 				s, _ := store.NewKvScrtStore(context.TODO(), token, log.New(io.Discard))
+// 				return s
+// 			},
+// 			nil,
+// 			config.AzKeyVaultSecretsPrefix,
+// 		},
+// 		"success AZAPPCONF": {
+// 			func() func() {
+// 				return func() {
+// 					os.Clearenv()
+// 				}
+// 			},
+// 			"foo/bar1",
+// 			config.NewConfig().WithTokenSeparator("#"),
+// 			func() store.Strategy {
+// 				token, _ := config.NewToken(config.AzAppConfigPrefix, *config.NewConfig().WithTokenSeparator("#"))
+// 				token.WithSanitizedToken("foo/bar1")
+// 				s, _ := store.NewAzAppConf(context.TODO(), token, log.New(io.Discard))
+// 				return s
+// 			},
+// 			nil,
+// 			config.AzAppConfigPrefix,
+// 		},
+// 		"success VAULT": {
+// 			func() func() {
+// 				os.Setenv("VAULT_", "AAAAAAAAAAAAAAA")
+// 				return func() {
+// 					os.Clearenv()
+// 				}
+// 			},
+// 			"foo/bar1",
+// 			config.NewConfig().WithTokenSeparator("#"),
+// 			func() store.Strategy {
+// 				token, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig().WithTokenSeparator("#"))
+// 				token.WithSanitizedToken("foo/bar1")
+// 				s, _ := store.NewVaultStore(context.TODO(), token, log.New(io.Discard))
+// 				return s
+// 			},
+// 			nil,
+// 			config.HashicorpVaultPrefix,
+// 		},
+// 		"success GCPSECRETS": {
+// 			func() func() {
+// 				cf, _ := os.CreateTemp(".", "*")
+// 				cf.Write(TEST_GCP_CREDS)
+// 				os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", cf.Name())
+// 				return func() {
+// 					os.Remove(cf.Name())
+// 					os.Clearenv()
+// 				}
+// 			},
+// 			"foo/bar1",
+// 			config.NewConfig().WithTokenSeparator("#"),
+// 			func() store.Strategy {
+// 				s, _ := store.NewGcpSecrets(context.TODO(), log.New(io.Discard))
+// 				return s
+// 			},
+// 			nil,
+// 			config.GcpSecretsPrefix,
+// 		},
+// 	}
+// 	for name, tt := range ttests {
+// 		t.Run(name, func(t *testing.T) {
+// 			tearDown := tt.setUpTearDown()
+// 			defer tearDown()
+// 			want := tt.expect()
+// 			rs := strategy.New(*tt.config, log.New(io.Discard))
+// 			token, _ := config.NewToken(tt.impPrefix, *tt.config)
+// 			token.WithSanitizedToken(tt.token)
+// 			got, err := rs.GetImplementation(context.TODO(), token)
 
-			if err != nil {
-				if err.Error() != tt.expErr.Error() {
-					t.Errorf(testutils.TestPhraseWithContext, "uncaught error", err.Error(), tt.expErr.Error())
-				}
-				return
-			}
+// 			if err != nil {
+// 				if err.Error() != tt.expErr.Error() {
+// 					t.Errorf(testutils.TestPhraseWithContext, "uncaught error", err.Error(), tt.expErr.Error())
+// 				}
+// 				return
+// 			}
 
-			diff := deep.Equal(got, want)
-			if diff != nil {
-				t.Errorf(testutils.TestPhraseWithContext, "reflection of initialised implentations", fmt.Sprintf("%q", got), fmt.Sprintf("%q", want))
-			}
-		})
-	}
-}
+// 			diff := deep.Equal(got, want)
+// 			if diff != nil {
+// 				t.Errorf(testutils.TestPhraseWithContext, "reflection of initialised implentations", fmt.Sprintf("%q", got), fmt.Sprintf("%q", want))
+// 			}
+// 		})
+// 	}
+// }

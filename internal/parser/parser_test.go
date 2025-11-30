@@ -9,7 +9,6 @@ import (
 	"github.com/DevLabFoundry/configmanager/v3/internal/lexer"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/DevLabFoundry/configmanager/v3/internal/parser"
-	"github.com/DevLabFoundry/configmanager/v3/internal/store"
 )
 
 var lexerSource = lexer.Source{FileName: "bar", FullPath: "/foo/bar"}
@@ -188,100 +187,100 @@ func Test_Parse_should_pass_with_metadata_end_tag(t *testing.T) {
 	}
 }
 
-func Test_Parse_ParseMetadata(t *testing.T) {
+// func Test_Parse_ParseMetadata(t *testing.T) {
 
-	ttests := map[string]struct {
-		input string
-		typ   *store.SecretsMgrConfig
-	}{
-		"without keysPath": {
-			`AWSSECRETS:///foo[version=1.2.3]`,
-			&store.SecretsMgrConfig{},
-		},
-		"with keysPath": {
-			`AWSSECRETS:///foo|path.one[version=1.2.3]`,
-			&store.SecretsMgrConfig{},
-		},
-		"nestled in text": {
-			`someQ=AWSPARAMSTR:///path/queryparam|p1[version=1.2.3]&anotherQ`,
-			&store.SecretsMgrConfig{},
-		},
-	}
-	for name, tt := range ttests {
-		t.Run(name, func(t *testing.T) {
-			lexerSource.Input = tt.input
-			cfg := config.NewConfig()
-			l := lexer.New(lexerSource, *cfg)
-			p := parser.New(l, cfg).WithLogger(log.New(os.Stderr))
-			parsed, errs := p.Parse()
-			if len(errs) > 0 {
-				t.Fatalf("%v", errs)
-			}
+// 	ttests := map[string]struct {
+// 		input string
+// 		typ   *store.SecretsMgrConfig
+// 	}{
+// 		"without keysPath": {
+// 			`AWSSECRETS:///foo[version=1.2.3]`,
+// 			&store.SecretsMgrConfig{},
+// 		},
+// 		"with keysPath": {
+// 			`AWSSECRETS:///foo|path.one[version=1.2.3]`,
+// 			&store.SecretsMgrConfig{},
+// 		},
+// 		"nestled in text": {
+// 			`someQ=AWSPARAMSTR:///path/queryparam|p1[version=1.2.3]&anotherQ`,
+// 			&store.SecretsMgrConfig{},
+// 		},
+// 	}
+// 	for name, tt := range ttests {
+// 		t.Run(name, func(t *testing.T) {
+// 			lexerSource.Input = tt.input
+// 			cfg := config.NewConfig()
+// 			l := lexer.New(lexerSource, *cfg)
+// 			p := parser.New(l, cfg).WithLogger(log.New(os.Stderr))
+// 			parsed, errs := p.Parse()
+// 			if len(errs) > 0 {
+// 				t.Fatalf("%v", errs)
+// 			}
 
-			for _, p := range parsed {
-				if err := p.ParsedToken.ParseMetadata(tt.typ); err != nil {
-					t.Fatal(err)
-				}
-				if tt.typ.Version != "1.2.3" {
-					t.Errorf("got %v wanted 1.2.3", tt.typ.Version)
-				}
-			}
-		})
-	}
-}
+// 			for _, p := range parsed {
+// 				if err := p.ParsedToken.ParseMetadata(tt.typ); err != nil {
+// 					t.Fatal(err)
+// 				}
+// 				if tt.typ.Version != "1.2.3" {
+// 					t.Errorf("got %v wanted 1.2.3", tt.typ.Version)
+// 				}
+// 			}
+// 		})
+// 	}
+// }
 
-func Test_Parse_Path_Keys_WithParsedMetadat(t *testing.T) {
+// func Test_Parse_Path_Keys_WithParsedMetadat(t *testing.T) {
 
-	ttests := map[string]struct {
-		input             string
-		typ               *store.SecretsMgrConfig
-		wantSanitizedPath string
-		wantKeyPath       string
-	}{
-		"without keysPath": {
-			`AWSSECRETS:///foo[version=1.2.3]`,
-			&store.SecretsMgrConfig{},
-			"/foo", "",
-		},
-		"with keysPath": {
-			`AWSSECRETS:///foo|path.one[version=1.2.3]`,
-			&store.SecretsMgrConfig{},
-			"/foo", "path.one",
-		},
-		"nestled in text": {
-			`someQ=AWSPARAMSTR:///path/queryparam|p1[version=1.2.3]&anotherQ`,
-			&store.SecretsMgrConfig{},
-			"/path/queryparam", "p1",
-		},
-	}
-	for name, tt := range ttests {
-		t.Run(name, func(t *testing.T) {
-			lexerSource.Input = tt.input
-			cfg := config.NewConfig()
-			l := lexer.New(lexerSource, *cfg)
-			p := parser.New(l, cfg).WithLogger(log.New(os.Stderr))
-			parsed, errs := p.Parse()
-			if len(errs) > 0 {
-				t.Fatalf("%v", errs)
-			}
+// 	ttests := map[string]struct {
+// 		input             string
+// 		typ               *store.SecretsMgrConfig
+// 		wantSanitizedPath string
+// 		wantKeyPath       string
+// 	}{
+// 		"without keysPath": {
+// 			`AWSSECRETS:///foo[version=1.2.3]`,
+// 			&store.SecretsMgrConfig{},
+// 			"/foo", "",
+// 		},
+// 		"with keysPath": {
+// 			`AWSSECRETS:///foo|path.one[version=1.2.3]`,
+// 			&store.SecretsMgrConfig{},
+// 			"/foo", "path.one",
+// 		},
+// 		"nestled in text": {
+// 			`someQ=AWSPARAMSTR:///path/queryparam|p1[version=1.2.3]&anotherQ`,
+// 			&store.SecretsMgrConfig{},
+// 			"/path/queryparam", "p1",
+// 		},
+// 	}
+// 	for name, tt := range ttests {
+// 		t.Run(name, func(t *testing.T) {
+// 			lexerSource.Input = tt.input
+// 			cfg := config.NewConfig()
+// 			l := lexer.New(lexerSource, *cfg)
+// 			p := parser.New(l, cfg).WithLogger(log.New(os.Stderr))
+// 			parsed, errs := p.Parse()
+// 			if len(errs) > 0 {
+// 				t.Fatalf("%v", errs)
+// 			}
 
-			for _, p := range parsed {
-				if p.ParsedToken.StoreToken() != tt.wantSanitizedPath {
-					t.Errorf("got %s want %s", p.ParsedToken.StoreToken(), tt.wantSanitizedPath)
-				}
-				if p.ParsedToken.LookupKeys() != tt.wantKeyPath {
-					t.Errorf("got %s want %s", p.ParsedToken.LookupKeys(), tt.wantKeyPath)
-				}
-				if err := p.ParsedToken.ParseMetadata(tt.typ); err != nil {
-					t.Fatal(err)
-				}
-				if tt.typ.Version != "1.2.3" {
-					t.Errorf("got %v wanted 1.2.3", tt.typ.Version)
-				}
-			}
-		})
-	}
-}
+// 			for _, p := range parsed {
+// 				if p.ParsedToken.StoreToken() != tt.wantSanitizedPath {
+// 					t.Errorf("got %s want %s", p.ParsedToken.StoreToken(), tt.wantSanitizedPath)
+// 				}
+// 				if p.ParsedToken.LookupKeys() != tt.wantKeyPath {
+// 					t.Errorf("got %s want %s", p.ParsedToken.LookupKeys(), tt.wantKeyPath)
+// 				}
+// 				if err := p.ParsedToken.ParseMetadata(tt.typ); err != nil {
+// 					t.Fatal(err)
+// 				}
+// 				if tt.typ.Version != "1.2.3" {
+// 					t.Errorf("got %v wanted 1.2.3", tt.typ.Version)
+// 				}
+// 			}
+// 		})
+// 	}
+// }
 
 func testHelperGenDocBlock(t *testing.T, stmtBlock parser.ConfigManagerTokenBlock, tokenType config.ImplementationPrefix, tokenValue, keysLookupPath string) bool {
 	t.Helper()

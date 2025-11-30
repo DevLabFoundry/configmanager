@@ -22,6 +22,6 @@ var (
 type Strategy interface {
 	// Value retrieves the underlying value for the token
 	Value() (s string, e error)
-	// SetToken 
+	// SetToken
 	SetToken(s *config.ParsedTokenConfig)
 }

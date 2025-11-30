@@ -94,27 +94,27 @@ func (tr *TokenResponse) Value() string {
 
 func defaultStrategyFuncMap(logger log.ILogger) StrategyFuncMap {
 	return map[config.ImplementationPrefix]StrategyFunc{
-		config.AzTableStorePrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewAzTableStore(ctx, token, logger)
-		},
-		config.AzAppConfigPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewAzAppConf(ctx, token, logger)
-		},
-		config.GcpSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewGcpSecrets(ctx, logger)
-		},
-		config.SecretMgrPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewSecretsMgr(ctx, logger)
-		},
-		config.ParamStorePrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewParamStore(ctx, logger)
-		},
-		config.AzKeyVaultSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewKvScrtStore(ctx, token, logger)
-		},
-		config.HashicorpVaultPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			return store.NewVaultStore(ctx, token, logger)
-		},
+		// config.AzTableStorePrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+		// 	return store.NewAzTableStore(ctx, token, logger)
+		// },
+		// config.AzAppConfigPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+		// 	return store.NewAzAppConf(ctx, token, logger)
+		// },
+		// config.GcpSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+		// 	return store.NewGcpSecrets(ctx, logger)
+		// },
+		// config.SecretMgrPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+		// 	return store.NewSecretsMgr(ctx, logger)
+		// },
+		// config.ParamStorePrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+		// 	return store.NewParamStore(ctx, logger)
+		// },
+		// config.AzKeyVaultSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+		// 	return store.NewKvScrtStore(ctx, token, logger)
+		// },
+		// config.HashicorpVaultPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+		// 	return store.NewVaultStore(ctx, token, logger)
+		// },
 	}
 }
 

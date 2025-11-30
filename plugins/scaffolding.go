@@ -22,9 +22,3 @@ var (
 	ErrEmptyResponse        = errors.New("value retrieved but empty for token")
 	ErrServiceCallFailed    = errors.New("failed to complete the service call")
 )
-
-type MessagExchange struct {
-	Token    string         `json:"token"`
-	Metadata map[string]any `json:"metadata,omitempty"`
-	Version  string         `json:"version"`
-}

@@ -1,5 +1,13 @@
-package main
+# AWS PARAM STORE Plugin
 
+This is the `awsparamstr` implementation plugin built using the gp-plugin architecture from hashicorp...
+
+
+## Alternate architecture 
+
+Explored an alternate architecture using WASIP1 
+
+```go
 import (
 	"context"
 	"encoding/binary"
@@ -199,5 +207,10 @@ func StrategyTokenValue(tokenPtr, tokenLen, outPtr, outCap, outLenPtr uint32) in
 // main is required for wasip1
 // scaffolds the `_initialize` method
 func main() {}
+```
 
-// GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o awsparams.wasm
+### Build notes
+
+build using the `-buildmode=c-shared` which will convert the module to a reactor module
+
+`GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o awsparams.wasm`

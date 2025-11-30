@@ -9,7 +9,7 @@ import (
 // GRPCClient is an implementation of KV that talks over RPC.
 type GRPCClient struct{ client proto.TokenStoreClient }
 
-func (m *GRPCClient) Get(key string, metadata []byte) (string, error) {
+func (m *GRPCClient) Value(key string, metadata []byte) (string, error) {
 	resp, err := m.client.Value(context.Background(), &proto.TokenValueRequest{
 		Token:    key,
 		Metadata: metadata,
@@ -27,9 +27,9 @@ type GRPCServer struct {
 	Impl TokenStore
 }
 
-func (m *GRPCServer) Get(
+func (m *GRPCServer) Value(
 	ctx context.Context,
 	req *proto.TokenValueRequest) (*proto.TokenValueResponse, error) {
-	v, err := m.Impl.Get(req.)
-	return &proto.GetResponse{Value: v}, err
+	v, err := m.Impl.Value(req.Token, req.Metadata)
+	return &proto.TokenValueResponse{Value: v}, err
 }
