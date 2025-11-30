@@ -14,10 +14,11 @@ permissions:
 
 jobs:
   set-version:
+    name: Set Version
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.head_branch == 'master' && github.event.workflow_run.conclusion == 'success' }}
     container:
-      image: mcr.microsoft.com/dotnet/sdk:6.0
+      image: mcr.microsoft.com/dotnet/sdk:10.0
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:
@@ -31,14 +32,15 @@ jobs:
           git config user.email ${{ github.actor }}-ci@gha.org
           git config user.name ${{ github.actor }}
       - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v3.0.0
+        uses: gittools/actions/gitversion/setup@v4.1.0
         with:
-          versionSpec: '5.x'
+          versionSpec: '6.x'
       - name: Set SemVer Version
-        uses: gittools/actions/gitversion/execute@v3.0.0
+        uses: gittools/actions/gitversion/execute@v4.1.0
         id: gitversion
 
   release:
+    name: Release
     runs-on: ubuntu-latest
     needs: set-version
     env:
@@ -66,7 +68,7 @@ jobs:
           generate_release_notes: true
           token: ${{ secrets.GITHUB_TOKEN }}
           files: ./dist/*
-          prerelease: false
+          prerelease: true
 
       - name: release library
         run: |

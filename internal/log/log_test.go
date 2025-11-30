@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
-	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
 )
 
 func Test_LogInfo(t *testing.T) {

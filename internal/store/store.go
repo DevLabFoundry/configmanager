@@ -3,7 +3,7 @@ package store
 import (
 	"errors"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 )
 
 const implementationNetworkErr string = "implementation %s error: %v for token: %s"
@@ -20,6 +20,8 @@ var (
 //
 // Defined on the package for easier re-use across the program
 type Strategy interface {
-	Token() (s string, e error)
+	// Value retrieves the underlying value for the token
+	Value() (s string, e error)
+	// SetToken
 	SetToken(s *config.ParsedTokenConfig)
 }

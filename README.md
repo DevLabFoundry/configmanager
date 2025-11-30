@@ -68,7 +68,7 @@ Where `configVar` can be either a parseable string `'som3#!S$CRet'` or a number 
 
 - Kubernetes
 
-   Avoid storing overly large configmaps and especially using secrets objects to store actual secrets e.g. DB passwords, 3rd party API creds, etc... By only storing a config file or a script containing only the tokens e.g. `AWSSECRETS#/$ENV/service/db-config` it can be git committed without writing numerous shell scripts, only storing either some interpolation vars like `$ENV` in a configmap or the entire configmanager token for smaller use cases.
+   Avoid storing overly large configmaps and especially using secrets objects to store actual secrets e.g. DB passwords, 3rd party API creds, etc... By only storing a config file or a script containing only the tokens e.g. `AWSSECRETS:///$ENV/service/db-config` it can be git committed without writing numerous shell scripts, only storing either some interpolation vars like `$ENV` in a configmap or the entire configmanager token for smaller use cases.
 
 - VMs
 
@@ -86,7 +86,7 @@ The token is made up of the following parts:
 
 _An example token would look like this_
 
-#### `AWSSECRETS#/path/to/my/key|lookup.Inside.Object[meta=data]`
+#### `AWSSECRETS:///path/to/my/key|lookup.Inside.Object[meta=data]`
 
 ### Implementation indicator
 
@@ -156,7 +156,9 @@ See [examples of working with files](docs/examples.md#working-with-files) for mo
 
 The `[meta=data]` from the [example token](#awssecretspathtomykeylookupinsideobjectmetadata) - is the optional metadata about the target in the backing provider
 
-IT must have this format `[key=value]` - IT IS OPTIONAL
+
+> IT must have this format `[key=value]` - IT IS OPTIONAL
+> IT must be specified last - either after a path lookup or if there is no key look up path specified then after the full path
 
 The `key` and `value` would be provider specific. Meaning that different providers support different config, these values _CAN_ be safely omitted configmanager would just use the defaults where applicable or not specify the additional
 
@@ -220,7 +222,7 @@ All the usual token rules apply e.g. of `keySeparator`
 For HashicorpVault the first part of the token needs to be the name of the mountpath. In Dev Vaults this is `"secret"`,
  e.g.: `VAULT://secret___demo/configmanager|test`
 
-or if the secrets are at another location: `VAULT://another/mount/path__config/app1/db`
+or if the secrets are at another location: `VAULT://another/mount/path___config/app1/db`
 
 The hardcoded separator cannot be modified and you must separate your `mountPath` with `___` (3x `_`) followed by the key to the secret.
 

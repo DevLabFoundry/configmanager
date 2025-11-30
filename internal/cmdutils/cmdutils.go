@@ -11,15 +11,16 @@ import (
 	"os"
 	"strings"
 
-	"github.com/DevLabFoundry/configmanager/v2/internal/config"
-	"github.com/DevLabFoundry/configmanager/v2/internal/log"
-	"github.com/DevLabFoundry/configmanager/v2/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/v3/generator"
+	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/spf13/cobra"
 )
 
 type configManagerIface interface {
-	RetrieveWithInputReplaced(input string) (string, error)
-	Retrieve(tokens []string) (generator.ParsedMap, error)
+	RetrieveReplacedBytes(input []byte) ([]byte, error)
+	RetrieveReplacedString(input string) (string, error)
+	Retrieve(tokens []string) (generator.ReplacedToken, error)
 	GeneratorConfig() *config.GenVarsConfig
 }
 
@@ -111,13 +112,13 @@ func (c *CmdUtils) generateStrOutFromInput(input io.Reader, writer io.Writer) er
 		return err
 	}
 
-	str, err := c.configManager.RetrieveWithInputReplaced(string(b))
+	replacedBytes, err := c.configManager.RetrieveReplacedBytes(b)
 	if err != nil {
 		return err
 	}
 	pp := &PostProcessor{}
 
-	return pp.StrToFile(writer, str)
+	return pp.StrToFile(writer, string(replacedBytes))
 }
 
 type WriterCloserWrapper struct {

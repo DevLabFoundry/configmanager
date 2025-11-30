@@ -10,24 +10,46 @@ contexts:
   bash:
     container:
       name: mirror.gcr.io/bash:5.0.18-alpine3.22
+  buf:
+    container:
+      name: docker.io/bufbuild/buf:1.61
+      pull_timeout: 0
+      entrypoint: /usr/bin/env
+
+  go1xalpine:
+    container:
+      name: mirror.gcr.io/golang:1.25-alpine
+    envfile:
+      exclude:
+        - GO
+        - CXX
+        - CGO
 
 pipelines:
-  gha:unit:test:
-    - pipeline: test:unit 
+  unit:test:
+    - pipeline: test:unit
       env:
         ROOT_PKG_NAME: github.com/DevLabFoundry
+
+  gha:unit:test:
+    - pipeline: unit:test
     - task: sonar:coverage:prep
-      depends_on: test:unit
+      depends_on: unit:test
 
   show_coverage:
-    - pipeline: test:unit
+    - pipeline: unit:test
     - task: show:coverage
-      depends_on: test:unit
+      depends_on: unit:test
 
   build:bin:
     - task: clean
     - task: go:build:binary
       depends_on: clean
+
+  proto:build:
+    - task: proto:install
+    - task: proto:generate
+      depends_on: proto:install
 
 tasks:
   show:coverage:
@@ -53,7 +75,7 @@ tasks:
       - |
         mkdir -p .deps
         unset GOTOOLCHAIN
-        ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Revision=${REVISION}\" -extldflags -static"
+        ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v3/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/v3/cmd/configmanager.Revision=${REVISION}\" -extldflags -static"
         GOPATH=/eirctl/.deps GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false -ldflags="$ldflags" \
         -o ./dist/configmanager-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX} ./cmd
         echo "---"
@@ -90,7 +112,7 @@ tasks:
   sonar:coverage:prep:
     context: bash
     command:
-      - | 
+      - |
         sed -i 's|github.com/DevLabFoundry/configmanager/v2/||g' .coverage/out
         echo "Coverage file first 20 lines after conversion:"
         head -20 .coverage/out
@@ -109,4 +131,15 @@ tasks:
         - VERSION
         - REVISION
 
+  # currently unused
+  proto:install:
+    context: go1xalpine
+    command:
+      - GOPATH=$PWD/local/go go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0
 
+  proto:generate:
+    context: buf
+    command:
+      # - PATH=$PATH:$PWD/local/go/bin buf generate
+      # getting all plugins from the remote registry
+      - buf generate

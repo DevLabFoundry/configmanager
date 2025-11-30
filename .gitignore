@@ -16,3 +16,4 @@ dist
 
 # local testers and 
 local/
+.bin
