@@ -6,7 +6,8 @@ import (
 	"github.com/DevLabFoundry/configmanager/v3/plugins/proto"
 )
 
-// GRPCClient is an implementation of KV that talks over RPC.
+// GRPCClient is the host process talking to the plugins
+// i.e. the GRPCServer implementation of the TokenStore
 type GRPCClient struct{ client proto.TokenStoreClient }
 
 func (m *GRPCClient) Value(key string, metadata []byte) (string, error) {

@@ -43,6 +43,28 @@ func (rtm *RawTokenConfig) RawTokenMap() map[string]*config.ParsedTokenConfig {
 	return rtm.tokenMap
 }
 
+type TokenResponse struct {
+	val string
+	key *config.ParsedTokenConfig
+	Err error
+}
+
+func (tr *TokenResponse) WithKey(key *config.ParsedTokenConfig) {
+	tr.key = key
+}
+
+func (tr *TokenResponse) WithValue(val string) {
+	tr.val = val
+}
+
+func (tr *TokenResponse) Key() *config.ParsedTokenConfig {
+	return tr.key
+}
+
+func (tr *TokenResponse) Value() string {
+	return tr.val
+}
+
 // keySeparatorLookup checks if the key contains
 // keySeparator character
 // If it does contain one then it tries to parse

@@ -14,7 +14,7 @@ import (
 	"github.com/DevLabFoundry/configmanager/v3/internal/lexer"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/DevLabFoundry/configmanager/v3/internal/parser"
-	"github.com/DevLabFoundry/configmanager/v3/internal/strategy"
+	"github.com/DevLabFoundry/configmanager/v3/internal/store"
 )
 
 // Generator is the main struct holding the
@@ -24,10 +24,11 @@ import (
 // which wil be passed in a loop into a goroutine to perform the
 // relevant strategy network calls to the config store implementations
 type Generator struct {
-	Logger   log.ILogger
-	strategy strategy.StrategyFuncMap
-	ctx      context.Context
-	config   config.GenVarsConfig
+	Logger log.ILogger
+	// strategy strategy.StrategyFuncMap
+	store  *store.Store
+	ctx    context.Context
+	config config.GenVarsConfig
 }
 
 type Opts func(*Generator)
@@ -48,7 +49,7 @@ func new(ctx context.Context, opts ...Opts) *Generator {
 		// return using default config
 		config: *conf,
 	}
-	g.strategy = nil
+	// g.strategy = nil
 
 	// now apply additional opts
 	for _, o := range opts {
@@ -58,13 +59,13 @@ func new(ctx context.Context, opts ...Opts) *Generator {
 	return g
 }
 
-// WithStrategyMap
-//
-// Adds addtional funcs for storageRetrieval used for testing only
-func (c *Generator) WithStrategyMap(sm strategy.StrategyFuncMap) *Generator {
-	c.strategy = sm
-	return c
-}
+// // WithStrategyMap
+// //
+// // Adds addtional funcs for storageRetrieval used for testing only
+// func (c *Generator) WithStrategyMap(sm strategy.StrategyFuncMap) *Generator {
+// 	c.strategy = sm
+// 	return c
+// }
 
 // WithConfig uses custom config
 func (c *Generator) WithConfig(cfg *config.GenVarsConfig) *Generator {
@@ -97,6 +98,14 @@ func (c *Generator) Generate(tokens []string) (ReplacedToken, error) {
 		return nil, err
 	}
 
+	// initialise pugins here based on discovered tokens
+	//
+	s, err := store.Init(c.ctx, ntm.TokenSet())
+	if err != nil {
+		return nil, err
+	}
+
+	c.store = s
 	// pass in default initialised retrieveStrategy
 	// input should be
 	rt, err := c.generate(ntm)
@@ -145,14 +154,15 @@ func IsParsed(v any, trm ReplacedToken) bool {
 // It then denormalizes the NormalizedTokenSafe back to a ReplacedToken map
 // which stores the values for each token to be returned to the caller
 func (c *Generator) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
-	if len(ntm.normalizedTokenMap) < 1 {
+	if len(ntm.m) < 1 {
 		c.Logger.Debug("no replaceable tokens found in input")
 		return nil, nil
 	}
 
 	wg := &sync.WaitGroup{}
 
-	s := strategy.New(c.config, c.Logger, strategy.WithStrategyFuncMap(c.strategy))
+	// initialise the stores here
+	// s := strategy.New(c.config, c.Logger, strategy.WithStrategyFuncMap(c.strategy))
 
 	// safe read of normalized token map
 	// this will ensure that we are minimizing
@@ -164,13 +174,20 @@ func (c *Generator) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
 		}
 		token := prsdTkn.parsedTokens[0]
 		wg.Go(func() {
-			prsdTkn.resp = &strategy.TokenResponse{}
-			storeStrategy, err := s.GetImplementation(c.ctx, token)
+			prsdTkn.resp = &TokenResponse{}
+			prsdTkn.resp.WithKey(token)
+			storeStrategy, err := c.store.GetImplementation(token.Prefix())
 			if err != nil {
 				prsdTkn.resp.Err = err
 				return
 			}
-			prsdTkn.resp = strategy.ExchangeToken(storeStrategy, token)
+			// storeStrategy.GetValue(token)
+			v, err := storeStrategy.GetValue(token)
+			if err != nil {
+				prsdTkn.resp.Err = err
+				return
+			}
+			prsdTkn.resp.WithValue(v)
 		})
 	}
 
@@ -200,7 +217,9 @@ func (c *Generator) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
 // The idea is to minimize the number of networks calls to the underlying `store` Implementations
 //
 // The merging is based on the implemenentation and sanitized token being the same,
-// if the token contains metadata then it must be
+// if the token contains metadata then it must be stored uniquely even if the underlying store is the same.
+// This is because a token with metadata must be called uniquely
+// as it may contain different versions of the same token - hence the value would be different
 //
 // # Merging strategy
 //
@@ -209,7 +228,7 @@ type NormalizedToken struct {
 	// all the tokens that can be used to do a replacement
 	parsedTokens []*config.ParsedTokenConfig
 	// will be assigned post generate
-	resp *strategy.TokenResponse
+	resp *TokenResponse
 	// // configToken is the last assigned full config in the loop if multip
 	// configToken *config.ParsedTokenConfig
 }
@@ -222,36 +241,49 @@ func (n *NormalizedToken) WithParsedToken(v *config.ParsedTokenConfig) *Normaliz
 // NormalizedTokenSafe is the map of lowest common denominators
 // by token.Keypathless or token.String (full token) if metadata is included
 type NormalizedTokenSafe struct {
-	mu                 *sync.Mutex
-	normalizedTokenMap map[string]*NormalizedToken
+	mu  *sync.Mutex
+	m   map[string]*NormalizedToken
+	set map[string]struct{}
 }
 
 func (n NormalizedTokenSafe) GetMap() map[string]*NormalizedToken {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	return n.normalizedTokenMap
+	return n.m
+}
+
+func (n NormalizedTokenSafe) TokenSet() []string {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	ss := []string{}
+	for key, _ := range n.set {
+		ss = append(ss, strings.ToLower(key))
+	}
+	return ss
 }
 
 func (c *Generator) NormalizeRawToken(rtm *RawTokenConfig) NormalizedTokenSafe {
-	ntm := NormalizedTokenSafe{mu: &sync.Mutex{}, normalizedTokenMap: make(map[string]*NormalizedToken)}
+	ntm := NormalizedTokenSafe{mu: &sync.Mutex{}, m: make(map[string]*NormalizedToken), set: make(map[string]struct{})}
 
 	for _, r := range rtm.RawTokenMap() {
 		// if a string contains we need to store it uniquely
 		// future improvements might group all the metadata values together
 		if len(r.Metadata()) > 0 {
-			if n, found := ntm.normalizedTokenMap[r.String()]; found {
+			if n, found := ntm.m[r.String()]; found {
 				n.WithParsedToken(r)
 				continue
 			}
-			ntm.normalizedTokenMap[r.String()] = (&NormalizedToken{}).WithParsedToken(r)
+			ntm.m[r.String()] = (&NormalizedToken{}).WithParsedToken(r)
+			ntm.set[string(r.Prefix())] = struct{}{}
 			continue
 		}
 
-		if n, found := ntm.normalizedTokenMap[r.Keypathless()]; found {
+		if n, found := ntm.m[r.Keypathless()]; found {
 			n.WithParsedToken(r)
 			continue
 		}
-		ntm.normalizedTokenMap[r.Keypathless()] = (&NormalizedToken{}).WithParsedToken(r)
+		ntm.m[r.Keypathless()] = (&NormalizedToken{}).WithParsedToken(r)
+		ntm.set[string(r.Prefix())] = struct{}{}
 		continue
 	}
 	return ntm

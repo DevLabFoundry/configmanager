@@ -9,11 +9,8 @@ import (
 	"github.com/hashicorp/go-plugin"
 )
 
-// Plugin is responsible for managing plugins within configmanager
-//
-// It includes the following methods
-//   - fetch plugins from known sources
-//   - maintains a list of tokens answerable by a specified pluginEngine
+// Plugin is responsible for managing the plugin lifecycle
+// within the configmanager flow. Each Implementation will initialise exactly one instance of the plugin
 type Plugin struct {
 	Implementations config.ImplementationPrefix
 	SourcePath      string
@@ -22,8 +19,8 @@ type Plugin struct {
 	tokenStore      plugins.TokenStore
 }
 
-// New Plugin gets called once per implementation
-func New(ctx context.Context, path string, prefix config.ImplementationPrefix) (*Plugin, error) {
+// NewPlugin Plugin gets called once per implementation
+func NewPlugin(ctx context.Context, path string) (*Plugin, error) {
 	// We're a host. Start by launching the plugin process.
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig:  plugins.Handshake,
@@ -31,7 +28,6 @@ func New(ctx context.Context, path string, prefix config.ImplementationPrefix) (
 		Cmd:              exec.Command(path),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 	})
-
 	// Connect via RPC
 	rpcClient, err := client.Client()
 	if err != nil {

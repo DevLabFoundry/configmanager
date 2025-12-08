@@ -4,7 +4,8 @@ output: prefixed
 debug: false
 
 import:
-  - https://raw.githubusercontent.com/Ensono/eirctl/refs/tags/0.9.3/shared/build/go/eirctl.yaml
+  - https://raw.githubusercontent.com/Ensono/eirctl/refs/tags/0.9.7/shared/build/go/eirctl.yaml
+  - https://raw.githubusercontent.com/Ensono/eirctl/refs/tags/0.9.7/shared/security/eirctl.yaml
 
 contexts:
   bash:
@@ -51,6 +52,19 @@ pipelines:
     - task: proto:generate
       depends_on: proto:install
 
+  build:plugins:
+    - task: go:build:plugin
+      name: awsparamstr
+      env:
+        PLUGIN: awsparamstr
+    - task: go:build:plugin
+      name: vault
+      env:
+        PLUGIN: vault
+
+  scan:plugins:
+    - task: trivy:file:system:sbom
+
 tasks:
   show:coverage:
     description: Opens the current coverage viewer for the the configmanager utility.
@@ -65,6 +79,44 @@ tasks:
     command: |
       open http://localhost:6060/pkg/github.com/DevLabFoundry/configmanager/v2/?m=all
       godoc -notes "BUG|TODO" -play -http=:6060
+
+  go:build:plugin:
+    context: go1xalpine
+    command:
+      - |
+        mkdir -p .deps
+        unset GOTOOLCHAIN
+        ldflags="-s -w -extldflags -static"
+        GOPATH=/eirctl/.deps GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false -ldflags="$ldflags" \
+        -o ./plugins/$PLUGIN/bin/$PLUGIN-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX} ./plugins/$PLUGIN/main.go
+        echo "---"
+        echo "Built: $PLUGIN-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX}"
+    reset_context: true
+    variations:
+      - BUILD_GOOS: darwin
+        BUILD_GOARCH: amd64
+        BUILD_SUFFIX: ""
+      - BUILD_GOOS: darwin
+        BUILD_GOARCH: arm64
+        BUILD_SUFFIX: ""
+      - BUILD_GOOS: linux
+        BUILD_GOARCH: amd64
+        BUILD_SUFFIX: ""
+      - BUILD_GOOS: linux
+        BUILD_GOARCH: arm64
+        BUILD_SUFFIX: ""
+      - BUILD_GOOS: windows
+        BUILD_GOARCH: amd64
+        BUILD_SUFFIX: ".exe"
+      - BUILD_GOOS: windows
+        BUILD_GOARCH: arm64
+        BUILD_SUFFIX: ".exe"
+      - BUILD_GOOS: windows
+        BUILD_GOARCH: "386"
+        BUILD_SUFFIX: ".exe"
+    required:
+      env:
+        - PLUGIN
 
   go:build:binary:
     context: go1x

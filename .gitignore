@@ -7,9 +7,12 @@
 
 # Go
 vendor
-bin
 dist
 .deps/
+
+# generated
+bin
+plugins/**/bin
 
 # tests
 .coverage
@@ -17,3 +20,5 @@ dist
 # local testers and 
 local/
 .bin
+.configmanager
+.trivy/fs-sbom-file.json
