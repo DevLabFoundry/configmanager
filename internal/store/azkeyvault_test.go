@@ -1,13 +1,16 @@
-package generator
+package store
 
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
-	"github.com/dnitsch/configmanager/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
 )
 
 func Test_azSplitToken(t *testing.T) {
@@ -74,7 +77,7 @@ func azKvCommonGetSecretChecker(t *testing.T, name, version, expectedName string
 		t.Errorf("incorrectly stripped token separator")
 	}
 
-	if strings.Contains(name, string(AzKeyVaultSecretsPrefix)) {
+	if strings.Contains(name, string(config.AzKeyVaultSecretsPrefix)) {
 		t.Errorf("incorrectly stripped prefix")
 	}
 
@@ -90,12 +93,14 @@ func (m mockAzKvSecretApi) GetSecret(ctx context.Context, name string, version s
 }
 
 func TestAzKeyVault(t *testing.T) {
+	t.Parallel()
 
+	tsuccessParam := "dssdfdweiuyh"
 	tests := map[string]struct {
 		token      string
 		expect     string
 		mockClient func(t *testing.T) kvApi
-		config     *GenVarsConfig
+		config     *config.GenVarsConfig
 	}{
 		"successVal": {"AZKVSECRET#/test-vault//token/1", tsuccessParam, func(t *testing.T) kvApi {
 			return mockAzKvSecretApi(func(ctx context.Context, name string, version string, options *azsecrets.GetSecretOptions) (azsecrets.GetSecretResponse, error) {
@@ -105,7 +110,7 @@ func TestAzKeyVault(t *testing.T) {
 				resp.Value = &tsuccessParam
 				return resp, nil
 			})
-		}, NewConfig().WithKeySeparator("|").WithTokenSeparator("#"),
+		}, config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"),
 		},
 		"successVal with version": {"AZKVSECRET#/test-vault//token/1[version:123]", tsuccessParam, func(t *testing.T) kvApi {
 			return mockAzKvSecretApi(func(ctx context.Context, name string, version string, options *azsecrets.GetSecretOptions) (azsecrets.GetSecretResponse, error) {
@@ -115,7 +120,7 @@ func TestAzKeyVault(t *testing.T) {
 				resp.Value = &tsuccessParam
 				return resp, nil
 			})
-		}, NewConfig().WithKeySeparator("|").WithTokenSeparator("#"),
+		}, config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"),
 		},
 		"successVal with keyseparator": {"AZKVSECRET#/test-vault/token/1|somekey", tsuccessParam, func(t *testing.T) kvApi {
 			return mockAzKvSecretApi(func(ctx context.Context, name string, version string, options *azsecrets.GetSecretOptions) (azsecrets.GetSecretResponse, error) {
@@ -127,7 +132,7 @@ func TestAzKeyVault(t *testing.T) {
 				return resp, nil
 			})
 		},
-			NewConfig().WithKeySeparator("|").WithTokenSeparator("#"),
+			config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"),
 		},
 		"errored": {"AZKVSECRET#/test-vault/token/1|somekey", "unable to retrieve secret", func(t *testing.T) kvApi {
 			return mockAzKvSecretApi(func(ctx context.Context, name string, version string, options *azsecrets.GetSecretOptions) (azsecrets.GetSecretResponse, error) {
@@ -138,7 +143,7 @@ func TestAzKeyVault(t *testing.T) {
 				return resp, fmt.Errorf("unable to retrieve secret")
 			})
 		},
-			NewConfig().WithKeySeparator("|").WithTokenSeparator("#"),
+			config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"),
 		},
 		"empty": {"AZKVSECRET#/test-vault/token/1|somekey", "", func(t *testing.T) kvApi {
 			return mockAzKvSecretApi(func(ctx context.Context, name string, version string, options *azsecrets.GetSecretOptions) (azsecrets.GetSecretResponse, error) {
@@ -149,21 +154,21 @@ func TestAzKeyVault(t *testing.T) {
 				return resp, nil
 			})
 		},
-			NewConfig().WithKeySeparator("|").WithTokenSeparator("#"),
+			config.NewConfig().WithKeySeparator("|").WithTokenSeparator("#"),
 		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			impl, err := NewKvScrtStore(context.TODO(), tt.token, *tt.config)
+			token, _ := config.NewParsedTokenConfig(tt.token, *tt.config)
+
+			impl, err := NewKvScrtStore(context.TODO(), token, log.New(io.Discard))
 			if err != nil {
 				t.Errorf("failed to init azkvstore")
 			}
 
 			impl.svc = tt.mockClient(t)
-			rs := newRetrieveStrategy(NewDefatultStrategy(), *tt.config)
-			rs.setImplementation(impl)
-			got, err := rs.getTokenValue()
+			got, err := impl.Token()
 			if err != nil {
 				if err.Error() != tt.expect {
 					t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)

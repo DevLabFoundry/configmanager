@@ -1,28 +1,22 @@
-package main
+package examples
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
-	"github.com/dnitsch/configmanager"
-	"github.com/dnitsch/configmanager/pkg/generator"
+	"github.com/DevLabFoundry/configmanager/v2"
 )
 
 const DO_STUFF_WITH_VALS_HERE = "connstring:user@%v:host=%s/someschema..."
 
-func main() {
-	retrieveExample()
-	retrieveStringOut()
-	retrieveYaml()
-}
-
 // retrieveExample uses the standard Retrieve method on the API
 // this will return generator.ParsedMap which can be later used for more complex use cases
 func retrieveExample() {
-	cm := &configmanager.ConfigManager{}
-	cnf := generator.NewConfig()
+	cm := configmanager.New(context.TODO())
+	cm.Config.WithTokenSeparator("://")
 
-	pm, err := cm.Retrieve([]string{"token1", "token2"}, *cnf)
+	pm, err := cm.Retrieve([]string{"token1", "token2"})
 
 	if err != nil {
 		panic(err)
@@ -40,8 +34,7 @@ func retrieveExample() {
 
 // retrieveStringOut accepts a string as an input
 func retrieveStringOut() {
-	cm := &configmanager.ConfigManager{}
-	cnf := generator.NewConfig()
+	cm := configmanager.New(context.TODO())
 	// JSON Marshal K8s CRD into
 	exampleK8sCrdMarshalled := `apiVersion: crd.foo.custom/v1alpha1
 kind: CustomFooCrd
@@ -53,7 +46,7 @@ spec:
 	secret_val: AWSSECRETS#/customfoo/secret-val
 	owner: test_10016@example.com
 `
-	pm, err := cm.RetrieveWithInputReplaced(exampleK8sCrdMarshalled, *cnf)
+	pm, err := cm.RetrieveWithInputReplaced(exampleK8sCrdMarshalled)
 
 	if err != nil {
 		panic(err)
@@ -72,13 +65,11 @@ func SpecConfigTokenReplace[T any](inputType T) (*T, error) {
 		return nil, err
 	}
 
-	cm := configmanager.ConfigManager{}
-
+	cm := configmanager.New(context.TODO())
 	// use custom token separator
-	// inline with
-	cnf := generator.NewConfig().WithTokenSeparator("://")
+	cm.Config.WithTokenSeparator("://")
 
-	replaced, err := cm.RetrieveWithInputReplaced(string(rawBytes), *cnf)
+	replaced, err := cm.RetrieveWithInputReplaced(string(rawBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +79,9 @@ func SpecConfigTokenReplace[T any](inputType T) (*T, error) {
 	return outType, nil
 }
 
-// Example using a helper method
-func retrieveYaml() {
+// Example
+func exampleRetrieveYamlUnmarshalled() {
+
 	type config struct {
 		DbHost   string `yaml:"dbhost"`
 		Username string `yaml:"user"`
@@ -101,12 +93,41 @@ pass: AWSPARAMSTR:///int-test/pocketbase/config|pwd
 dbhost: AWSPARAMSTR:///int-test/pocketbase/config|host
 `
 
-	cm := &configmanager.ConfigManager{}
+	appConf := &config{}
+	cm := configmanager.New(context.TODO())
 	// use custom token separator inline with future releases
-	cmConf := generator.NewConfig().WithTokenSeparator("://")
-	appConf, err := configmanager.RetrieveUnmarshalledFromYaml([]byte(configMarshalled), &config{}, cm, *cmConf)
+	cm.Config.WithTokenSeparator("://")
+	err := cm.RetrieveUnmarshalledFromYaml([]byte(configMarshalled), appConf)
 	if err != nil {
 		panic(err)
+	}
+	fmt.Println(appConf.DbHost)
+	fmt.Println(appConf.Username)
+	fmt.Println(appConf.Password)
+}
+
+// ### exampleRetrieveYamlMarshalled
+func exampleRetrieveYamlMarshalled() {
+	type config struct {
+		DbHost   string `yaml:"dbhost"`
+		Username string `yaml:"user"`
+		Password string `yaml:"pass"`
+	}
+
+	appConf := &config{
+		DbHost:   "AWSPARAMSTR:///int-test/pocketbase/config|host",
+		Username: "AWSPARAMSTR:///int-test/pocketbase/config|user",
+		Password: "AWSPARAMSTR:///int-test/pocketbase/config|pwd",
+	}
+
+	cm := configmanager.New(context.TODO())
+	cm.Config.WithTokenSeparator("://")
+	err := cm.RetrieveMarshalledYaml(appConf)
+	if err != nil {
+		panic(err)
+	}
+	if appConf.DbHost == "AWSPARAMSTR:///int-test/pocketbase/config|host" {
+		panic(fmt.Errorf("value of DbHost should have been replaced with a value from token"))
 	}
 	fmt.Println(appConf.DbHost)
 	fmt.Println(appConf.Username)

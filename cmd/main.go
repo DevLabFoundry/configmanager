@@ -1,8 +1,17 @@
 package main
 
-import cfgmgr "github.com/dnitsch/configmanager/cmd/configmanager"
+import (
+	"context"
+	"os"
+
+	cfgmgr "github.com/DevLabFoundry/configmanager/v2/cmd/configmanager"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+)
 
 func main() {
-	// init loggerHere or in init function
-	cfgmgr.Execute()
+	logger := log.New(os.Stderr)
+	cmd := cfgmgr.NewRootCmd(logger)
+	if err := cmd.Execute(context.Background()); err != nil {
+		os.Exit(1)
+	}
 }

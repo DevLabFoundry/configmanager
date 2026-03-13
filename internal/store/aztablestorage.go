@@ -1,7 +1,7 @@
 /**
  * Azure TableStore implementation
 **/
-package generator
+package store
 
 import (
 	"context"
@@ -12,7 +12,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/aztables"
-	"github.com/dnitsch/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
 )
 
 var ErrIncorrectlyStructuredToken = errors.New("incorrectly structured token")
@@ -26,76 +27,86 @@ type tableStoreApi interface {
 type AzTableStore struct {
 	svc    tableStoreApi
 	ctx    context.Context
-	token  string
-	config TokenConfigVars
+	logger log.ILogger
+	config *AzTableStrgConfig
+	token  *config.ParsedTokenConfig
+	// token only without table indicators
+	// key only
+	strippedToken string
+}
+
+type AzTableStrgConfig struct {
+	Format string `json:"format"`
 }
 
 // NewAzTableStore
-func NewAzTableStore(ctx context.Context, token string, conf GenVarsConfig) (*AzTableStore, error) {
+func NewAzTableStore(ctx context.Context, token *config.ParsedTokenConfig, logger log.ILogger) (*AzTableStore, error) {
 
-	ct := conf.ParseTokenVars(token)
-
-	tstore := &AzTableStore{
+	storeConf := &AzTableStrgConfig{}
+	_ = token.ParseMetadata(storeConf)
+	// initialToken := config.ParseMetadata(token, storeConf)
+	backingStore := &AzTableStore{
 		ctx:    ctx,
-		config: ct,
+		logger: logger,
+		config: storeConf,
+		token:  token,
 	}
 
-	srvInit := azServiceFromToken(stripPrefix(ct.Token, AzTableStorePrefix, conf.TokenSeparator(), conf.KeySeparator()), "https://%s.table.core.windows.net/%s", 2)
-	tstore.token = srvInit.token
+	srvInit := azServiceFromToken(token.StoreToken(), "https://%s.table.core.windows.net/%s", 2)
+	backingStore.strippedToken = srvInit.token
 
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		log.Error(err)
+		logger.Error("failed to get credentials: %v", err)
 		return nil, err
 	}
 
 	c, err := aztables.NewClient(srvInit.serviceUri, cred, nil)
 	if err != nil {
-		log.Error(err)
+		logger.Error("failed to init the client: %v", err)
 		return nil, fmt.Errorf("%v\n%w", err, ErrClientInitialization)
 	}
 
-	tstore.svc = c
-	return tstore, nil
-
+	backingStore.svc = c
+	return backingStore, nil
 }
 
 // setToken already happens in the constructor
-func (implmt *AzTableStore) setTokenVal(token string) {}
+func (implmt *AzTableStore) SetToken(token *config.ParsedTokenConfig) {}
 
 // tokenVal in AZ table storage if an Entity contains the `value` property
 // we attempt to extract it and return.
 //
 // From this point then normal rules of configmanager apply,
 // including keySeperator and lookup.
-func (imp *AzTableStore) tokenVal(v *retrieveStrategy) (string, error) {
-	log.Info("Concrete implementation AzTableSTore")
-	log.Infof("AzTableSTore Token: %s", imp.token)
+func (imp *AzTableStore) Token() (string, error) {
+	imp.logger.Info("AzTableSTore Token: %s", imp.token.String())
+	imp.logger.Info("Concrete implementation AzTableSTore")
 
 	ctx, cancel := context.WithCancel(imp.ctx)
 	defer cancel()
 
 	// split the token for partition and rowKey
-	pKey, rKey, err := azTableStoreTokenSplitter(imp.token)
+	pKey, rKey, err := azTableStoreTokenSplitter(imp.strippedToken)
 	if err != nil {
 		return "", err
 	}
 
 	s, err := imp.svc.GetEntity(ctx, pKey, rKey, &aztables.GetEntityOptions{})
 	if err != nil {
-		log.Errorf(implementationNetworkErr, AzTableStorePrefix, err, imp.token)
-		return "", fmt.Errorf(implementationNetworkErr+" %w", AzTableStorePrefix, err, imp.token, ErrRetrieveFailed)
+		imp.logger.Error(implementationNetworkErr, config.AzTableStorePrefix, err, imp.strippedToken)
+		return "", fmt.Errorf(implementationNetworkErr+" %w", config.AzTableStorePrefix, err, imp.token.StoreToken(), ErrRetrieveFailed)
 	}
 	if len(s.Value) > 0 {
 		// check for `value` property in entity
 		checkVal := make(map[string]interface{})
-		json.Unmarshal(s.Value, &checkVal)
+		_ = json.Unmarshal(s.Value, &checkVal)
 		if checkVal["value"] != nil {
 			return fmt.Sprintf("%v", checkVal["value"]), nil
 		}
 		return string(s.Value), nil
 	}
-	log.Errorf("value retrieved but empty for token: %v", imp.token)
+	imp.logger.Error("value retrieved but empty for token: %v", imp.token)
 	return "", nil
 }
 
@@ -108,32 +119,4 @@ func azTableStoreTokenSplitter(token string) (partitionKey, rowKey string, err e
 	rowKey = splitToken[1]
 	// naked return to save having to define another struct
 	return
-}
-
-/*
-// Generic Azure Service Init Helpers
-*/
-
-// azServiceHelper returns a service URI and the stripped token
-type azServiceHelper struct {
-	serviceUri string
-	token      string
-}
-
-// azServiceFromToken for azure the first part of the token __must__ always be the
-// identifier of the service e.g. the account name for tableStore or the KV name for KVSecret
-// take parameter specifies the number of elements to take from the start only
-//
-// e.g. a value of 2 for take  will take first 2 elements from the slices
-func azServiceFromToken(token string, formatUri string, take int) azServiceHelper {
-	// ensure preceding slash is trimmed
-	stringToken := strings.Split(strings.TrimPrefix(token, "/"), "/")
-	splitToken := []any{}
-	// recast []string slice to an []any
-	for _, st := range stringToken {
-		splitToken = append(splitToken, st)
-	}
-
-	uri := fmt.Sprintf(formatUri, splitToken[0:take]...)
-	return azServiceHelper{serviceUri: uri, token: strings.Join(stringToken[take:], "/")}
 }

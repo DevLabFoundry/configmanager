@@ -2,69 +2,87 @@ name: CI
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+permissions:
+  contents: write
+  statuses: write
+  checks: write
+  pull-requests: write
 
 jobs:
   set-version:
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/dotnet/sdk:6.0 
+      image: mcr.microsoft.com/dotnet/sdk:6.0
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: install deps
+        run: |
+          apt-get update && apt-get install -y jq git
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.email ${{ github.actor }}-ci@gha.org
+          git config user.name ${{ github.actor }}
       - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v0.9.15
+        uses: gittools/actions/gitversion/setup@v3.0.0
         with:
-          versionSpec: '5.x'
+          versionSpec: "5.x"
       - name: Set SemVer Version
-        uses: gittools/actions/gitversion/execute@v0.9.15
+        uses: gittools/actions/gitversion/execute@v3.0.0
         id: gitversion
 
       - name: echo VERSIONS
-        run: | 
+        run: |
           echo "REVISION  -> $GITHUB_SHA"
           echo "VERSION -> $GITVERSION_SEMVER"
+
   test:
     runs-on: ubuntu-latest
-    container:
-      image: golang:1.19-bullseye
     needs: set-version
     env:
       SEMVER: ${{ needs.set-version.outputs.semVer }}
       GIT_TAG: ${{ needs.set-version.outputs.semVer }}
       GOVCS: false
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: install deps
+
+      - name: Install Eirctl
+        uses: ensono/actions/eirctl-setup@v0.3.1
+        with:
+          version: 0.9.3
+          isPrerelease: false
+
+      - name: Run Lint
         run: |
-          apt update && apt install -y jq git
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git config user.email ${{ github.actor }}-ci@gha.org
-          git config user.name ${{ github.actor }}
-      - name: make test 
+          eirctl run pipeline lints
+      - name: Run Tests
         run: |
-          make REVISION=$GITHUB_SHA test
+          eirctl run pipeline gha:unit:test
+
       - name: Publish Junit style Test Report
-        uses: mikepenz/action-junit-report@v3
+        uses: mikepenz/action-junit-report@v4
         if: always() # always run even if the previous step fails
         with:
-          report_paths: '**/.coverage/report-junit.xml'
-      - name: Analyze with SonarCloud         
-        # You can pin the exact commit or the version.
-        uses: SonarSource/sonarcloud-github-action@master
+          report_paths: "**/.coverage/report-junit.xml"
+
+      - name: Analyze with SonarCloud
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
-          SEMVER: $SEMVER
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   # Generate a token on Sonarcloud.io, add it to the secrets of this repo with the name SONAR_TOKEN (Settings > Secrets > Actions > add new repository secret)
+          # Needed to get PR information
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Generate a token on Sonarcloud.io, add it to the secrets of this repo with the name SONAR_TOKEN (Settings > Secrets > Actions > add new repository secret)
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          # Additional arguments for the sonarcloud scanner
-          args:             
-            # mandatory
+          projectBaseDir: .
+          args: >
             -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }}
-            -Dsonar.go.coverage.reportPaths=/github/workspace/.coverage/out
-            -Dsonar.go.tests.reportPaths=/github/workspace/.coverage/report-junit.xml
+            -Dsonar.working.directory=.scannerwork
+            -Dsonar.scm.provider=git

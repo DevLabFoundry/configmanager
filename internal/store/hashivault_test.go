@@ -1,15 +1,18 @@
-package generator
+package store
 
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/dnitsch/configmanager/internal/testutils"
+	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
 	vault "github.com/hashicorp/vault/api"
 )
 
@@ -28,8 +31,8 @@ func TestMountPathExtract(t *testing.T) {
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
-			strippedToken := stripPrefix(tt.token, HashicorpVaultPrefix, tt.tokenSeparator, tt.keySeparator)
-			got := splitToken(strippedToken)
+			token, _ := config.NewParsedTokenConfig(tt.token, *config.NewConfig().WithTokenSeparator(tt.tokenSeparator).WithKeySeparator(tt.keySeparator))
+			got := splitToken(token.StoreToken())
 			if got.path != tt.expect {
 				t.Errorf("got %q, expected %q", got, tt.expect)
 			}
@@ -51,14 +54,16 @@ func (m mockVaultApi) GetVersion(ctx context.Context, secretPath string, version
 }
 
 func TestVaultScenarios(t *testing.T) {
+	t.Parallel()
+
 	ttests := map[string]struct {
 		token      string
-		conf       GenVarsConfig
+		conf       *config.GenVarsConfig
 		expect     string
 		mockClient func(t *testing.T) hashiVaultApi
 		setupEnv   func() func()
 	}{
-		"happy return": {"VAULT://secret___/foo", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"}, `{"foo":"test2130-9sd-0ds"}`,
+		"happy return": {"VAULT://secret___/foo", config.NewConfig(), `{"foo":"test2130-9sd-0ds"}`,
 			func(t *testing.T) hashiVaultApi {
 				mv := mockVaultApi{}
 				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
@@ -79,7 +84,7 @@ func TestVaultScenarios(t *testing.T) {
 				}
 			},
 		},
-		"incorrect json": {"VAULT://secret___/foo", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"}, `json: unsupported type: func() error`,
+		"incorrect json": {"VAULT://secret___/foo", config.NewConfig(), `json: unsupported type: func() error`,
 			func(t *testing.T) hashiVaultApi {
 				mv := mockVaultApi{}
 				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
@@ -102,7 +107,7 @@ func TestVaultScenarios(t *testing.T) {
 		},
 		"another return": {
 			"VAULT://secret/engine1___/some/other/foo2",
-			GenVarsConfig{tokenSeparator: "://", keySeparator: "|"},
+			config.NewConfig(),
 			`{"foo1":"test2130-9sd-0ds","foo2":"dsfsdf3454456"}`,
 			func(t *testing.T) hashiVaultApi {
 				mv := mockVaultApi{}
@@ -125,7 +130,7 @@ func TestVaultScenarios(t *testing.T) {
 				}
 			},
 		},
-		"not found": {"VAULT://secret___/foo", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"}, `secret not found`,
+		"not found": {"VAULT://secret___/foo", config.NewConfig(), `secret not found`,
 			func(t *testing.T) hashiVaultApi {
 				mv := mockVaultApi{}
 				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
@@ -144,7 +149,7 @@ func TestVaultScenarios(t *testing.T) {
 				}
 			},
 		},
-		"403": {"VAULT://secret___/some/other/foo2", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"}, `client 403`,
+		"403": {"VAULT://secret___/some/other/foo2", config.NewConfig(), `client 403`,
 			func(t *testing.T) hashiVaultApi {
 				mv := mockVaultApi{}
 				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
@@ -163,7 +168,7 @@ func TestVaultScenarios(t *testing.T) {
 				}
 			},
 		},
-		"found but empty": {"VAULT://secret___/some/other/foo2", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"}, `{}`, func(t *testing.T) hashiVaultApi {
+		"found but empty": {"VAULT://secret___/some/other/foo2", config.NewConfig(), `{}`, func(t *testing.T) hashiVaultApi {
 			mv := mockVaultApi{}
 			mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
 				t.Helper()
@@ -182,7 +187,7 @@ func TestVaultScenarios(t *testing.T) {
 				}
 			},
 		},
-		"found but nil returned": {"VAULT://secret___/some/other/foo2", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"}, "", func(t *testing.T) hashiVaultApi {
+		"found but nil returned": {"VAULT://secret___/some/other/foo2", config.NewConfig(), "", func(t *testing.T) hashiVaultApi {
 			mv := mockVaultApi{}
 			mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
 				t.Helper()
@@ -200,7 +205,7 @@ func TestVaultScenarios(t *testing.T) {
 				}
 			},
 		},
-		"version provided correctly": {"VAULT://secret___/some/other/foo2[version:1]", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"}, `{"foo2":"dsfsdf3454456"}`, func(t *testing.T) hashiVaultApi {
+		"version provided correctly": {"VAULT://secret___/some/other/foo2[version=1]", config.NewConfig(), `{"foo2":"dsfsdf3454456"}`, func(t *testing.T) hashiVaultApi {
 			mv := mockVaultApi{}
 			mv.gv = func(ctx context.Context, secretPath string, version int) (*vault.KVSecret, error) {
 				t.Helper()
@@ -220,7 +225,7 @@ func TestVaultScenarios(t *testing.T) {
 				}
 			},
 		},
-		"version provided but unable to parse": {"VAULT://secret___/some/other/foo2[version:1a]", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"}, "unable to parse version into an integer: strconv.Atoi: parsing \"1a\": invalid syntax", func(t *testing.T) hashiVaultApi {
+		"version provided but unable to parse": {"VAULT://secret___/some/other/foo2[version=1a]", config.NewConfig(), "unable to parse version into an integer: strconv.Atoi: parsing \"1a\": invalid syntax", func(t *testing.T) hashiVaultApi {
 			mv := mockVaultApi{}
 			mv.gv = func(ctx context.Context, secretPath string, version int) (*vault.KVSecret, error) {
 				t.Helper()
@@ -238,17 +243,22 @@ func TestVaultScenarios(t *testing.T) {
 				}
 			},
 		},
-		"vault rate limit incorrect": {"VAULT://secret___/some/other/foo2", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"}, "unable to initialize Vault client: error encountered setting up default configuration: VAULT_RATE_LIMIT was provided but incorrectly formatted", func(t *testing.T) hashiVaultApi {
-			mv := mockVaultApi{}
-			mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
-				t.Helper()
-				if secretPath != "some/other/foo2" {
-					t.Errorf(testutils.TestPhrase, secretPath, `some/other/foo2`)
+		"vault rate limit incorrect": {
+			"VAULT://secret___/some/other/foo2",
+			config.NewConfig(),
+			`error encountered setting up default configuration: VAULT_RATE_LIMIT was provided but incorrectly formatted
+failed to initialize the client`,
+			func(t *testing.T) hashiVaultApi {
+				mv := mockVaultApi{}
+				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
+					t.Helper()
+					if secretPath != "some/other/foo2" {
+						t.Errorf(testutils.TestPhrase, secretPath, `some/other/foo2`)
+					}
+					return &vault.KVSecret{Data: nil}, nil
 				}
-				return &vault.KVSecret{Data: nil}, nil
-			}
-			return mv
-		},
+				return mv
+			},
 			func() func() {
 				os.Setenv("VAULT_TOKEN", "")
 				os.Setenv("VAULT_RATE_LIMIT", "wrong")
@@ -263,7 +273,9 @@ func TestVaultScenarios(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			tearDown := tt.setupEnv()
 			defer tearDown()
-			impl, err := NewVaultStore(context.TODO(), tt.token, tt.conf)
+			token, _ := config.NewParsedTokenConfig(tt.token, *tt.conf)
+
+			impl, err := NewVaultStore(context.TODO(), token, log.New(io.Discard))
 			if err != nil {
 				if err.Error() != tt.expect {
 					t.Fatalf("failed to init hashivault, %v", err.Error())
@@ -272,9 +284,7 @@ func TestVaultScenarios(t *testing.T) {
 			}
 
 			impl.svc = tt.mockClient(t)
-			rs := newRetrieveStrategy(NewDefatultStrategy(), tt.conf)
-			rs.setImplementation(impl)
-			got, err := rs.getTokenValue()
+			got, err := impl.Token()
 			if err != nil {
 				if err.Error() != tt.expect {
 					t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)
@@ -291,14 +301,14 @@ func TestVaultScenarios(t *testing.T) {
 func TestAwsIamAuth(t *testing.T) {
 	ttests := map[string]struct {
 		token       string
-		conf        GenVarsConfig
+		conf        *config.GenVarsConfig
 		expect      string
 		mockClient  func(t *testing.T) hashiVaultApi
 		mockHanlder func(t *testing.T) http.Handler
 		setupEnv    func(addr string) func()
 	}{
 		"aws_iam auth no role specified": {
-			"VAULT://secret___/some/other/foo2[version:1]", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"},
+			"VAULT://secret___/some/other/foo2[version:1]", config.NewConfig(),
 			"role provided is empty, EC2 auth not supported",
 			func(t *testing.T) hashiVaultApi {
 				mv := mockVaultApi{}
@@ -326,13 +336,13 @@ func TestAwsIamAuth(t *testing.T) {
 			},
 		},
 		"aws_iam auth incorrectly formatted request": {
-			"VAULT://secret___/some/other/foo2[version:1,role:not_a_role]", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"},
+			"VAULT://secret___/some/other/foo2[version=1,iam_role=not_a_role]", config.NewConfig(),
 			`unable to login to AWS auth method: unable to log in to auth method: unable to log in with AWS auth: Error making API request.
 
 URL: PUT %s/v1/auth/aws/login
 Code: 400. Raw Message:
 
-incorrect values supplied`,
+incorrect values supplied. failed to initialize the client`,
 			func(t *testing.T) hashiVaultApi {
 				mv := mockVaultApi{}
 				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
@@ -367,7 +377,7 @@ incorrect values supplied`,
 			},
 		},
 		"aws_iam auth success": {
-			"VAULT://secret___/some/other/foo2[role:arn:aws:iam::1111111:role/i-orchestration]", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"},
+			"VAULT://secret___/some/other/foo2[iam_role=arn:aws:iam::1111111:role/i-orchestration]", config.NewConfig(),
 			`{"foo2":"dsfsdf3454456"}`,
 			func(t *testing.T) hashiVaultApi {
 				mv := mockVaultApi{}
@@ -404,8 +414,8 @@ incorrect values supplied`,
 			},
 		},
 		"aws_iam auth no token returned": {
-			"VAULT://secret___/some/other/foo2[role:arn:aws:iam::1111111:role/i-orchestration]", GenVarsConfig{tokenSeparator: "://", keySeparator: "|"},
-			`unable to login to AWS auth method: response did not return ClientToken, client token not set`,
+			"VAULT://secret___/some/other/foo2[iam_role=arn:aws:iam::1111111:role/i-orchestration]", config.NewConfig(),
+			`unable to login to AWS auth method: response did not return ClientToken, client token not set. failed to initialize the client`,
 			func(t *testing.T) hashiVaultApi {
 				mv := mockVaultApi{}
 				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
@@ -448,7 +458,9 @@ incorrect values supplied`,
 			ts := httptest.NewServer(tt.mockHanlder(t))
 			tearDown := tt.setupEnv(ts.URL)
 			defer tearDown()
-			impl, err := NewVaultStore(context.TODO(), tt.token, tt.conf)
+			token, _ := config.NewParsedTokenConfig(tt.token, *tt.conf)
+
+			impl, err := NewVaultStore(context.TODO(), token, log.New(io.Discard))
 			if err != nil {
 				// WHAT A CRAP way to do this...
 				if err.Error() != strings.Split(fmt.Sprintf(tt.expect, ts.URL), `%!`)[0] {
@@ -459,9 +471,7 @@ incorrect values supplied`,
 			}
 
 			impl.svc = tt.mockClient(t)
-			rs := newRetrieveStrategy(NewDefatultStrategy(), tt.conf)
-			rs.setImplementation(impl)
-			got, err := rs.getTokenValue()
+			got, err := impl.Token()
 			if err != nil {
 				if err.Error() != tt.expect {
 					t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)

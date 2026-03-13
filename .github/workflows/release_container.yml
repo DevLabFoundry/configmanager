@@ -1,0 +1,66 @@
+name: Publish Container
+
+on:
+  workflow_run:
+    workflows: ['Lint and Test']
+    types:
+      - completed
+    branches: 
+      - main
+
+permissions:
+  contents: write
+  packages: write 
+
+jobs:
+  set-version-tag:
+    if: ${{ github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-24.04
+    outputs:
+      semVer: ${{ steps.gitversion.outputs.semVer }}
+    steps:
+      - uses: actions/checkout@v4
+      # get version
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3.0
+        with:
+          versionSpec: '5.x'
+      - name: Set SemVer Version
+        uses: gittools/actions/gitversion/execute@v3.0
+        id: gitversion
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: set-version-tag
+    env:
+      SEMVER: ${{ needs.set-version-tag.outputs.semVer }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          # GITHUB_TOKEN is automatically provided in GitHub Actions
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU (for multi-arch builds, optional)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: Version=${{ needs.set-version-tag.outputs.semVer }},Revision=${{ github.sha }}
+          tags: |
+            ghcr.io/ensono/eirctl:${{ needs.set-version-tag.outputs.semVer }}
+          platforms: linux/amd64,linux/arm64  # adjust as needed

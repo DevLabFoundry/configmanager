@@ -5,54 +5,72 @@ on:
     workflows: ['CI']
     types:
       - completed
+    branches:
+      - master
+      - main
+
+permissions:
+  contents: write
 
 jobs:
   set-version:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.head_branch == 'master' && github.event.workflow_run.conclusion == 'success' }}
     container:
-      image: mcr.microsoft.com/dotnet/sdk:6.0 
+      image: mcr.microsoft.com/dotnet/sdk:6.0
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: install deps
+        run: |
+          apt-get update && apt-get install -y jq git
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.email ${{ github.actor }}-ci@gha.org
+          git config user.name ${{ github.actor }}
       - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v0.9.15
+        uses: gittools/actions/gitversion/setup@v3.0.0
         with:
           versionSpec: '5.x'
       - name: Set SemVer Version
-        uses: gittools/actions/gitversion/execute@v0.9.15
+        uses: gittools/actions/gitversion/execute@v3.0.0
         id: gitversion
 
-      - name: echo VERSIONS
-        run: | 
-          echo "REVISION  -> $GITHUB_SHA"
-          echo "VERSION -> $GITVERSION_SEMVER"
   release:
     runs-on: ubuntu-latest
-    container:
-      image: golang:1.19-bullseye
-      env:
-        FOO: Bar
     needs: set-version
     env:
       SEMVER: ${{ needs.set-version.outputs.semVer }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: install deps
+
+      - name: Install Eirctl
+        uses: ensono/actions/eirctl-setup@v0.3.1
+        with: 
+          version: 0.7.6
+          isPrerelease: false
+
+      - name: build binary
         run: |
-          apt-get update && apt-get install jq git -y
+          VERSION=${SEMVER} REVISION=$GITHUB_SHA eirctl run pipeline build:bin
+
+      - name: Release binary
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.set-version.outputs.semVer }}
+          # TODO: add additional info to the release
+          generate_release_notes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: ./dist/*
+          prerelease: false
+
+      - name: release library
+        run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.email ${{ github.actor }}-ci@gha.org
           git config user.name ${{ github.actor }}
-      - name: release library
-        run: |
-          make GIT_TAG=${SEMVER} REVISION=$GITHUB_SHA tag
-      - name: release binary
-        run: |
-          make REVISION=$GITHUB_SHA GIT_TAG=${SEMVER} PAT=${{ secrets.GITHUB_TOKEN }} cross-build
-          make REVISION=$GITHUB_SHA GIT_TAG=${SEMVER} PAT=${{ secrets.GITHUB_TOKEN }} release
+          VERSION=${SEMVER} REVISION=$GITHUB_SHA eirctl run tag

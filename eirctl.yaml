@@ -1,0 +1,112 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Ensono/eirctl/refs/heads/main/schemas/schema_v1.json
+
+output: prefixed
+debug: false
+
+import:
+  - https://raw.githubusercontent.com/Ensono/eirctl/refs/tags/0.9.3/shared/build/go/eirctl.yaml
+
+contexts:
+  bash:
+    container:
+      name: mirror.gcr.io/bash:5.0.18-alpine3.22
+
+pipelines:
+  gha:unit:test:
+    - pipeline: test:unit 
+      env:
+        ROOT_PKG_NAME: github.com/DevLabFoundry
+    - task: sonar:coverage:prep
+      depends_on: test:unit
+
+  show_coverage:
+    - pipeline: test:unit
+    - task: show:coverage
+      depends_on: test:unit
+
+  build:bin:
+    - task: clean
+    - task: go:build:binary
+      depends_on: clean
+
+tasks:
+  show:coverage:
+    description: Opens the current coverage viewer for the the configmanager utility.
+    command: go tool cover -html=.coverage/out
+
+  show_docs:
+    description: |
+      Opens a webview with godoc running
+      Already filters the packages to this one and enables
+      internal/private package documentation
+    # go install golang.org/x/tools/cmd/godoc@latest
+    command: |
+      open http://localhost:6060/pkg/github.com/DevLabFoundry/configmanager/v2/?m=all
+      godoc -notes "BUG|TODO" -play -http=:6060
+
+  go:build:binary:
+    context: go1x
+    description: |
+      Generates binaries in a dist folder
+      Generates all the binaries for the configmanager utility.
+    command:
+      - |
+        mkdir -p .deps
+        unset GOTOOLCHAIN
+        ldflags="-s -w -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Version=${VERSION}\" -X \"github.com/DevLabFoundry/configmanager/v2/cmd/configmanager.Revision=${REVISION}\" -extldflags -static"
+        GOPATH=/eirctl/.deps GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false -ldflags="$ldflags" \
+        -o ./dist/configmanager-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX} ./cmd
+        echo "---"
+        echo "Built: configmanager-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX}"
+        echo "Version: ${VERSION}"
+    reset_context: true
+    variations:
+      - BUILD_GOOS: darwin
+        BUILD_GOARCH: amd64
+        BUILD_SUFFIX: ""
+      - BUILD_GOOS: darwin
+        BUILD_GOARCH: arm64
+        BUILD_SUFFIX: ""
+      - BUILD_GOOS: linux
+        BUILD_GOARCH: amd64
+        BUILD_SUFFIX: ""
+      - BUILD_GOOS: linux
+        BUILD_GOARCH: arm64
+        BUILD_SUFFIX: ""
+      - BUILD_GOOS: windows
+        BUILD_GOARCH: amd64
+        BUILD_SUFFIX: ".exe"
+      - BUILD_GOOS: windows
+        BUILD_GOARCH: arm64
+        BUILD_SUFFIX: ".exe"
+      - BUILD_GOOS: windows
+        BUILD_GOARCH: "386"
+        BUILD_SUFFIX: ".exe"
+    required:
+      env:
+        - VERSION
+        - REVISION
+
+  sonar:coverage:prep:
+    context: bash
+    command:
+      - | 
+        sed -i 's|github.com/DevLabFoundry/configmanager/v2/||g' .coverage/out
+        echo "Coverage file first 20 lines after conversion:"
+        head -20 .coverage/out
+        echo "Coverage file line count:"
+        wc -l .coverage/out
+
+  tag:
+    description: |
+      Usage `eirctl tag GIT_TAG=2111dsfsdfa REVISION=as2342432`
+
+    command: |
+      git tag -a ${VERSION} -m "ci tag release" ${REVISION}
+      git push origin ${VERSION}
+    required:
+      env:
+        - VERSION
+        - REVISION
+
+

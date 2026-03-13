@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: 'gomod'
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/London
+    open-pull-requests-limit: 50
+    assignees:
+      - dnitsch
+      - elvenspellmaker
+    rebase-strategy: disabled
+    groups:
+      low-risk:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"

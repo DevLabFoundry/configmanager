@@ -1,46 +1,41 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/dnitsch/configmanager"
-	"github.com/dnitsch/configmanager/internal/cmdutils"
-	"github.com/dnitsch/configmanager/pkg/generator"
 	"github.com/spf13/cobra"
 )
 
-// Default empty string array
-var tokenArray []string
+type retrieveTokenFlags struct {
+	tokens []string
+	path   string
+}
 
-var (
-	tokens      []string
-	path        string
-	retrieveCmd = &cobra.Command{
+func newRetrieveCmd(rootCmd *Root) {
+	f := &retrieveTokenFlags{}
+
+	retrieveCmd := &cobra.Command{
 		Use:     "retrieve",
 		Aliases: []string{"r", "fetch", "get"},
 		Short:   `Retrieves a value for token(s) specified`,
 		Long:    `Retrieves a value for token(s) specified and optionally writes to a file or to stdout in a bash compliant export KEY=VAL syntax`,
-		RunE:    retrieveRun,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cu, outputWriter, err := cmdutilsInit(rootCmd, cmd, f.path)
+			if err != nil {
+				return err
+			}
+			defer outputWriter.Close()
+			return cu.GenerateFromCmd(f.tokens)
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if len(tokens) < 1 {
+			if len(f.tokens) < 1 {
 				return fmt.Errorf("must include at least 1 token")
 			}
 			return nil
 		},
 	}
-)
-
-func init() {
-	retrieveCmd.PersistentFlags().StringArrayVarP(&tokens, "token", "t", tokenArray, "Token pointing to a config/secret variable. This can be specified multiple times.")
-	retrieveCmd.MarkPersistentFlagRequired("token")
-	retrieveCmd.PersistentFlags().StringVarP(&path, "path", "p", "./app.env", "Path where to write out the replaced a config/secret variables. Special value of stdout can be used to return the output to stdout e.g. -p stdout, unix style output only")
-	configmanagerCmd.AddCommand(retrieveCmd)
-}
-
-func retrieveRun(cmd *cobra.Command, args []string) error {
-	conf := generator.NewConfig().WithTokenSeparator(tokenSeparator).WithOutputPath(path).WithKeySeparator(keySeparator)
-	gv := generator.NewGenerator().WithConfig(conf).WithContext(context.Background())
-	configManager := &configmanager.ConfigManager{}
-	return cmdutils.New(gv, configManager).GenerateFromCmd(tokens, path)
+	retrieveCmd.PersistentFlags().StringArrayVarP(&f.tokens, "token", "t", []string{}, "Token pointing to a config/secret variable. This can be specified multiple times.")
+	_ = retrieveCmd.MarkPersistentFlagRequired("token")
+	retrieveCmd.PersistentFlags().StringVarP(&f.path, "path", "p", "./app.env", "Path where to write out the replaced a config/secret variables. Special value of stdout can be used to return the output to stdout e.g. -p stdout, unix style output only")
+	rootCmd.Cmd.AddCommand(retrieveCmd)
 }

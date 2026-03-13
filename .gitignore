@@ -9,8 +9,10 @@
 vendor
 bin
 dist
+.deps/
 
 # tests
 .coverage
 
-.ignore*
+# local testers and 
+local/

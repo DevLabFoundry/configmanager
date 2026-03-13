@@ -6,64 +6,13 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
 	"sync"
 
-	"github.com/dnitsch/configmanager/pkg/log"
+	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v2/internal/strategy"
 	"github.com/spyzhov/ajson"
 )
-
-type ImplementationPrefix string
-
-const (
-	// AWS SecretsManager prefix
-	SecretMgrPrefix ImplementationPrefix = "AWSSECRETS"
-	// AWS Parameter Store prefix
-	ParamStorePrefix ImplementationPrefix = "AWSPARAMSTR"
-	// Azure Key Vault Secrets prefix
-	AzKeyVaultSecretsPrefix ImplementationPrefix = "AZKVSECRET"
-	// Azure Key Vault Secrets prefix
-	AzTableStorePrefix ImplementationPrefix = "AZTABLESTORE"
-	// Hashicorp Vault prefix
-	HashicorpVaultPrefix ImplementationPrefix = "VAULT"
-	// GcpSecrets
-	GcpSecretsPrefix ImplementationPrefix = "GCPSECRETS"
-)
-
-const (
-	// tokenSeparator used for identifying the end of a prefix and beginning of token
-	// see notes about special consideration for AZKVSECRET tokens
-	tokenSeparator = "#"
-	// keySeparator used for accessing nested objects within the retrieved map
-	keySeparator = "|"
-)
-
-var (
-	// default varPrefix used by the replacer function
-	// any token must beging with one of these else
-	// it will be skipped as not a replaceable token
-	VarPrefix = map[ImplementationPrefix]bool{SecretMgrPrefix: true, ParamStorePrefix: true, AzKeyVaultSecretsPrefix: true, GcpSecretsPrefix: true, HashicorpVaultPrefix: true, AzTableStorePrefix: true}
-)
-
-// Generatoriface describes the exported methods
-// on the GenVars struct.
-type Generatoriface interface {
-	Generate(tokens []string) (ParsedMap, error)
-	ConvertToExportVar() []string
-	FlushToFile(w io.Writer, outString []string) error
-	StrToFile(w io.Writer, str string) error
-}
-
-// GenVarsiface stores strategy and GenVars implementation behaviour
-type GenVarsiface interface {
-	Generatoriface
-	Config() *GenVarsConfig
-}
-
-type muRawMap struct {
-	mu       sync.RWMutex
-	tokenMap ParsedMap
-}
 
 // GenVars is the main struct holding the
 // strategy patterns iface
@@ -72,44 +21,59 @@ type muRawMap struct {
 // which wil be passed in a loop into a goroutine to perform the
 // relevant strategy network calls to the config store implementations
 type GenVars struct {
-	Generatoriface
-	ctx       context.Context
-	config    GenVarsConfig
-	outString []string
+	Logger   log.ILogger
+	strategy strategy.StrategyFuncMap
+	ctx      context.Context
+	config   config.GenVarsConfig
 	// rawMap is the internal object that holds the values
 	// of original token => retrieved value - decrypted in plain text
 	// with a mutex RW locker
-	rawMap muRawMap //ParsedMap
+	rawMap tokenMapSafe //ParsedMap
 }
 
-// ParsedMap is the internal working object definition and
-// the return type if results are not flushed to file
-type ParsedMap map[string]any
+type Opts func(*GenVars)
 
 // NewGenerator returns a new instance of Generator
 // with a default strategy pattern wil be overwritten
 // during the first run of a found tokens map
-func NewGenerator() *GenVars {
+func NewGenerator(ctx context.Context, opts ...Opts) *GenVars {
 	// defaultStrategy := NewDefatultStrategy()
-	return newGenVars()
+	return newGenVars(ctx, opts...)
 }
 
-func newGenVars() *GenVars {
+func newGenVars(ctx context.Context, opts ...Opts) *GenVars {
 	m := make(ParsedMap)
-	defaultConf := GenVarsConfig{
-		tokenSeparator: tokenSeparator,
-		keySeparator:   keySeparator,
-	}
-	return &GenVars{
-		rawMap: muRawMap{tokenMap: m},
-		ctx:    context.TODO(),
+	conf := config.NewConfig()
+	g := &GenVars{
+		Logger: log.New(io.Discard),
+		rawMap: tokenMapSafe{
+			tokenMap: m,
+			mu:       &sync.Mutex{},
+		},
+		ctx: ctx,
 		// return using default config
-		config: defaultConf,
+		config: *conf,
 	}
+	g.strategy = nil
+
+	// now apply additional opts
+	for _, o := range opts {
+		o(g)
+	}
+
+	return g
+}
+
+// WithStrategyMap
+//
+// Adds addtional funcs for storageRetrieval used for testing only
+func (c *GenVars) WithStrategyMap(sm strategy.StrategyFuncMap) *GenVars {
+	c.strategy = sm
+	return c
 }
 
 // WithConfig uses custom config
-func (c *GenVars) WithConfig(cfg *GenVarsConfig) *GenVars {
+func (c *GenVars) WithConfig(cfg *config.GenVarsConfig) *GenVars {
 	// backwards compatibility
 	if cfg != nil {
 		c.config = *cfg
@@ -124,142 +88,162 @@ func (c *GenVars) WithContext(ctx context.Context) *GenVars {
 }
 
 // Config gets Config on the GenVars
-func (c *GenVars) Config() *GenVarsConfig {
+func (c *GenVars) Config() *config.GenVarsConfig {
 	return &c.config
 }
 
-func (c *GenVars) RawMap() ParsedMap {
-	c.rawMap.mu.RLock()
-	defer c.rawMap.mu.RUnlock()
-	// make a copy of the map
-	m := make(ParsedMap)
-	for k, v := range c.rawMap.tokenMap {
-		m[k] = v
+// ParsedMap is the internal working object definition and
+// the return type if results are not flushed to file
+type ParsedMap map[string]any
+
+func (pm ParsedMap) MapKeys() (keys []string) {
+	for k := range pm {
+		keys = append(keys, k)
 	}
-	return m
+	return
 }
 
-func (c *GenVars) AddRawMap(key, val string) {
-	c.rawMap.mu.Lock()
-	defer c.rawMap.mu.Unlock()
-	c.rawMap.tokenMap[key] = c.keySeparatorLookup(key, val)
+type tokenMapSafe struct {
+	mu       *sync.Mutex
+	tokenMap ParsedMap
+}
+
+func (tms *tokenMapSafe) getTokenMap() ParsedMap {
+	tms.mu.Lock()
+	defer tms.mu.Unlock()
+	return tms.tokenMap
+}
+
+func (tms *tokenMapSafe) addKeyVal(key *config.ParsedTokenConfig, val string) {
+	tms.mu.Lock()
+	defer tms.mu.Unlock()
+	// NOTE: still use the metadata in the key
+	// there could be different versions / labels for the same token and hence different values
+	// However the JSONpath look up
+	tms.tokenMap[key.String()] = keySeparatorLookup(key, val)
+}
+
+type rawTokenMap struct {
+	mu       sync.Mutex
+	tokenMap map[string]*config.ParsedTokenConfig
+}
+
+func newRawTokenMap() *rawTokenMap {
+	return &rawTokenMap{mu: sync.Mutex{}, tokenMap: map[string]*config.ParsedTokenConfig{}}
+}
+
+func (rtm *rawTokenMap) addToken(name string, parsedToken *config.ParsedTokenConfig) {
+	rtm.mu.Lock()
+	defer rtm.mu.Unlock()
+	rtm.tokenMap[name] = parsedToken
+}
+
+func (rtm *rawTokenMap) mapOfToken() map[string]*config.ParsedTokenConfig {
+	rtm.mu.Lock()
+	defer rtm.mu.Unlock()
+	return rtm.tokenMap
 }
 
 // Generate generates a k/v map of the tokens with their corresponding secret/paramstore values
-// the standard pattern of a token should follow a path like
+// the standard pattern of a token should follow a path like string
 func (c *GenVars) Generate(tokens []string) (ParsedMap, error) {
 
-	rawTokenPrefixMap := make(map[string]string)
+	rtm := newRawTokenMap()
 	for _, token := range tokens {
-		prefix := strings.Split(token, c.config.tokenSeparator)[0]
-		if found := VarPrefix[ImplementationPrefix(prefix)]; found {
-			rawTokenPrefixMap[token] = prefix
+		// TODO: normalize tokens here potentially
+		// merge any tokens that only differ in keys lookup inside the object
+		parsedToken, err := config.NewParsedTokenConfig(token, c.config)
+		if err != nil {
+			c.Logger.Info(err.Error())
+			continue
 		}
+		rtm.addToken(token, parsedToken)
 	}
-	rs := newRetrieveStrategy(NewDefatultStrategy(), c.config)
 	// pass in default initialised retrieveStrategy
-	if err := c.generate(rawTokenPrefixMap, rs); err != nil {
+	// input should be
+	if err := c.generate(rtm); err != nil {
 		return nil, err
 	}
-	return c.RawMap(), nil
-}
-
-type chanResp struct {
-	value string
-	key   string
-	err   error
-}
-
-type retrieveIface interface {
-	RetrieveByToken(ctx context.Context, impl genVarsStrategy, prefix ImplementationPrefix, in string) chanResp
-	SelectImplementation(ctx context.Context, prefix ImplementationPrefix, in string, config GenVarsConfig) (genVarsStrategy, error)
+	return c.rawMap.getTokenMap(), nil
 }
 
 // generate checks if any tokens found
 // initiates groutines with fixed size channel map
 // to capture responses and errors
 // generates ParsedMap which includes
-func (c *GenVars) generate(rawMap map[string]string, rs retrieveIface) error {
-	if len(rawMap) < 1 {
-		log.Debug("no replaceable tokens found in input strings")
+func (c *GenVars) generate(rawMap *rawTokenMap) error {
+	rtm := rawMap.mapOfToken()
+	if len(rtm) < 1 {
+		c.Logger.Debug("no replaceable tokens found in input")
 		return nil
 	}
 
-	var errors []error
-	// build an exact size channel
-	var wg sync.WaitGroup
-	initChanLen := len(rawMap)
-	outCh := make(chan chanResp, initChanLen)
+	tokenCount := len(rtm)
+	outCh := make(chan *strategy.TokenResponse, tokenCount)
 
-	wg.Add(initChanLen)
-	for token, prefix := range rawMap {
+	// TODO: initialise the singleton serviceContainer
+	// pass into each goroutine
+	for _, parsedToken := range rtm {
+		token := parsedToken // safe closure capture
 		// take value from config allocation on a per iteration basis
-		conf := c.Config()
-		go func(prfx ImplementationPrefix, tkn string, conf GenVarsConfig) {
-			defer wg.Done()
-			strategy, err := rs.SelectImplementation(c.ctx, prfx, tkn, conf)
+		go func() {
+			s := strategy.New(c.config, c.Logger, strategy.WithStrategyFuncMap(c.strategy))
+			storeStrategy, err := s.SelectImplementation(c.ctx, token)
 			if err != nil {
-				outCh <- chanResp{err: err}
+				outCh <- &strategy.TokenResponse{Err: err}
 				return
 			}
-			outCh <- rs.RetrieveByToken(c.ctx, strategy, prfx, tkn)
-		}(ImplementationPrefix(prefix), token, *conf)
+			outCh <- s.RetrieveByToken(c.ctx, storeStrategy, token)
+		}()
 	}
 
-	go func() {
-		wg.Wait()
-		close(outCh)
-	}()
-
-	for cro := range outCh {
-		cr := cro
-		log.Debugf("cro: %+v", cr)
-		if cr.err != nil {
-			log.Debugf("cr.err %v, for token: %s", cr.err, cr.key)
-			errors = append(errors, cr.err)
-			// Skip adding not found key to the RawMap
-			continue
+	// Fan-in: receive results with pure select
+	received := 0
+	for received < tokenCount {
+		select {
+		case cr := <-outCh:
+			if cr == nil {
+				continue // defensive (shouldn't happen)
+			}
+			c.Logger.Debug("cro: %+v", cr)
+			if cr.Err != nil {
+				c.Logger.Debug("cr.err %v, for token: %s", cr.Err, cr.Key())
+			} else {
+				c.rawMap.addKeyVal(cr.Key(), cr.Value())
+			}
+			received++
+		case <-c.ctx.Done():
+			c.Logger.Debug("context done: %v", c.ctx.Err())
+			return c.ctx.Err() // propagate context error (cancel/timeout)
 		}
-		c.AddRawMap(cr.key, cr.value)
-	}
-
-	if len(errors) > 0 {
-		// crude ...
-		log.Debugf("found: %d errors", len(errors))
-		// return outMap, fmt.Errorf("%v", errors)
 	}
 	return nil
 }
 
-// isParsed will try to parse the return found string into
+// IsParsed will try to parse the return found string into
 // map[string]string
 // If found it will convert that to a map with all keys uppercased
 // and any characters
-func isParsed(res any, trm *ParsedMap) bool {
-	str := fmt.Sprint(res)
-	if err := json.Unmarshal([]byte(str), &trm); err != nil {
-		log.Info("unable to parse into a k/v map returning a string instead")
-		return false
-	}
-	log.Info("parsed into a k/v map")
-	return true
+func IsParsed(v any, trm ParsedMap) bool {
+	str := fmt.Sprint(v)
+	err := json.Unmarshal([]byte(str), &trm)
+	return err == nil
 }
 
 // keySeparatorLookup checks if the key contains
 // keySeparator character
 // If it does contain one then it tries to parse
-func (c *GenVars) keySeparatorLookup(key, val string) string {
+func keySeparatorLookup(key *config.ParsedTokenConfig, val string) string {
 	// key has separator
-	kl := strings.Split(key, c.config.keySeparator)
-	log.Debugf("key list: %v", kl)
-	if len(kl) < 2 {
-		log.Infof("no keyseparator found")
+	k := key.LookupKeys()
+	if k == "" {
+		// c.logger.Info("no keyseparator found")
 		return val
 	}
 
-	keys, err := ajson.JSONPath([]byte(val), fmt.Sprintf("$..%s", kl[1]))
+	keys, err := ajson.JSONPath([]byte(val), fmt.Sprintf("$..%s", k))
 	if err != nil {
-		log.Debugf("unable to parse as json object %v", err.Error())
+		// c.logger.Debug("unable to parse as json object %v", err.Error())
 		return val
 	}
 
@@ -268,7 +252,7 @@ func (c *GenVars) keySeparatorLookup(key, val string) string {
 		if v.Type() == ajson.String {
 			str, err := strconv.Unquote(fmt.Sprintf("%v", v))
 			if err != nil {
-				log.Debugf("unable to unquote value: %v returning as is", v)
+				// c.logger.Debug("unable to unquote value: %v returning as is", v)
 				return fmt.Sprintf("%v", v)
 			}
 			return str
@@ -277,83 +261,6 @@ func (c *GenVars) keySeparatorLookup(key, val string) string {
 		return fmt.Sprintf("%v", v)
 	}
 
-	log.Infof("no value found in json using path expression")
+	// c.logger.Info("no value found in json using path expression")
 	return ""
-}
-
-// ConvertToExportVar assigns the k/v out
-// as unix style export key=val pairs separated by `\n`
-func (c *GenVars) ConvertToExportVar() []string {
-	for k, v := range c.RawMap() {
-		rawKeyToken := strings.Split(k, "/") // assumes a path like token was used
-		topLevelKey := rawKeyToken[len(rawKeyToken)-1]
-		trm := make(ParsedMap)
-		if parsedOk := isParsed(v, &trm); parsedOk {
-			// if is a map
-			// try look up on key if separator defined
-			normMap := c.envVarNormalize(trm)
-			c.exportVars(normMap)
-			continue
-		}
-		c.exportVars(ParsedMap{topLevelKey: v})
-	}
-	return c.outString
-}
-
-// envVarNormalize
-func (c *GenVars) envVarNormalize(pmap ParsedMap) ParsedMap {
-	normalizedMap := make(ParsedMap)
-	for k, v := range pmap {
-		normalizedMap[c.normalizeKey(k)] = v
-	}
-	return normalizedMap
-}
-
-func (c *GenVars) exportVars(exportMap ParsedMap) {
-
-	for k, v := range exportMap {
-		// NOTE: \n line ending is not totally cross platform
-		t := fmt.Sprintf("%T", v)
-		switch t {
-		case "string":
-			c.outString = append(c.outString, fmt.Sprintf("export %s='%s'", c.normalizeKey(k), v))
-		default:
-			c.outString = append(c.outString, fmt.Sprintf("export %s=%v", c.normalizeKey(k), v))
-		}
-	}
-}
-
-// normalizeKeys returns env var compatible key
-func (c *GenVars) normalizeKey(k string) string {
-	// the order of replacer pairs matters less
-	// as the Replace builds a node tree without overlapping matches
-	replacer := strings.NewReplacer([]string{" ", "", "@", "", "!", "", "-", "_", c.config.keySeparator, "__"}...)
-	return strings.ToUpper(replacer.Replace(k))
-}
-
-// FlushToFile saves contents to file provided
-// in the config input into the generator
-// default location is ./app.env
-func (c *GenVars) FlushToFile(w io.Writer, out []string) error {
-	return c.flushToFile(w, listToString(c.outString))
-}
-
-// StrToFile writes a provided string to the writer
-func (c *GenVars) StrToFile(w io.Writer, str string) error {
-	return c.flushToFile(w, str)
-}
-
-func (c *GenVars) flushToFile(f io.Writer, str string) error {
-
-	_, e := f.Write([]byte(str))
-
-	if e != nil {
-		return e
-	}
-
-	return nil
-}
-
-func listToString(strList []string) string {
-	return strings.Join(strList, "\n")
 }

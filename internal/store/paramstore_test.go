@@ -1,20 +1,23 @@
-package generator
+package store
 
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
+	"github.com/DevLabFoundry/configmanager/v2/internal/config"
+	"github.com/DevLabFoundry/configmanager/v2/internal/log"
+	"github.com/DevLabFoundry/configmanager/v2/internal/testutils"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
-	"github.com/dnitsch/configmanager/internal/testutils"
 )
 
-var (
-	tsuccessParam                   = "someVal"
-	tsuccessObj   map[string]string = map[string]string{"AWSPARAMSTR#/token/1": "someVal"}
-)
+// var (
+// 	tsuccessParam                   = "someVal"
+// 	tsuccessObj   map[string]string = map[string]string{"AWSPARAMSTR#/token/1": "someVal"}
+// )
 
 type mockParamApi func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error)
 
@@ -31,7 +34,7 @@ func awsParamtStoreCommonGetChecker(t *testing.T, params *ssm.GetParameterInput)
 		t.Errorf("incorrectly stripped token separator")
 	}
 
-	if strings.Contains(*params.Name, string(ParamStorePrefix)) {
+	if strings.Contains(*params.Name, string(config.ParamStorePrefix)) {
 		t.Errorf("incorrectly stripped prefix")
 	}
 
@@ -41,13 +44,19 @@ func awsParamtStoreCommonGetChecker(t *testing.T, params *ssm.GetParameterInput)
 }
 
 func Test_GetParamStore(t *testing.T) {
+	t.Parallel()
+
+	var (
+		tsuccessParam = "someVal"
+		// tsuccessObj   map[string]string = map[string]string{"AWSPARAMSTR#/token/1": "someVal"}
+	)
 	tests := map[string]struct {
 		token          string
 		keySeparator   string
 		tokenSeparator string
 		expect         string
 		mockClient     func(t *testing.T) paramStoreApi
-		config         *GenVarsConfig
+		config         *config.GenVarsConfig
 	}{
 		"successVal": {"AWSPARAMSTR#/token/1", "|", "#", tsuccessParam, func(t *testing.T) paramStoreApi {
 			return mockParamApi(func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
@@ -57,7 +66,7 @@ func Test_GetParamStore(t *testing.T) {
 					Parameter: &types.Parameter{Value: &tsuccessParam},
 				}, nil
 			})
-		}, NewConfig(),
+		}, config.NewConfig(),
 		},
 		"successVal with keyseparator": {"AWSPARAMSTR#/token/1|somekey", "|", "#", tsuccessParam, func(t *testing.T) paramStoreApi {
 			return mockParamApi(func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
@@ -72,7 +81,7 @@ func Test_GetParamStore(t *testing.T) {
 					Parameter: &types.Parameter{Value: &tsuccessParam},
 				}, nil
 			})
-		}, NewConfig(),
+		}, config.NewConfig(),
 		},
 		"errored": {"AWSPARAMSTR#/token/1", "|", "#", "unable to retrieve", func(t *testing.T) paramStoreApi {
 			return mockParamApi(func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
@@ -80,7 +89,7 @@ func Test_GetParamStore(t *testing.T) {
 				awsParamtStoreCommonGetChecker(t, params)
 				return nil, fmt.Errorf("unable to retrieve")
 			})
-		}, NewConfig(),
+		}, config.NewConfig(),
 		},
 		"nil to empty": {"AWSPARAMSTR#/token/1", "|", "#", "", func(t *testing.T) paramStoreApi {
 			return mockParamApi(func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
@@ -90,21 +99,21 @@ func Test_GetParamStore(t *testing.T) {
 					Parameter: &types.Parameter{Value: nil},
 				}, nil
 			})
-		}, NewConfig(),
+		}, config.NewConfig(),
 		},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			tt.config.WithTokenSeparator(tt.tokenSeparator).WithKeySeparator(tt.keySeparator)
-			rs := newRetrieveStrategy(NewDefatultStrategy(), *tt.config)
-			impl, err := NewParamStore(context.TODO())
+
+			token, _ := config.NewParsedTokenConfig(tt.token, *tt.config.WithTokenSeparator(tt.tokenSeparator).WithKeySeparator(tt.keySeparator))
+
+			impl, err := NewParamStore(context.TODO(), log.New(io.Discard))
 			if err != nil {
 				t.Errorf(testutils.TestPhrase, err.Error(), nil)
 			}
 			impl.svc = tt.mockClient(t)
-			rs.setImplementation(impl)
-			rs.setTokenVal(tt.token)
-			got, err := rs.getTokenValue()
+			impl.SetToken(token)
+			got, err := impl.Token()
 			if err != nil {
 				if err.Error() != tt.expect {
 					t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)
