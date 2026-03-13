@@ -2,11 +2,11 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/DevLabFoundry/configmanager/v2.svg)](https://pkg.go.dev/github.com/DevLabFoundry/configmanager/v2)
 [![Go Report Card](https://goreportcard.com/badge/github.com/DevLabFoundry/configmanager/v2)](https://goreportcard.com/report/github.com/DevLabFoundry/configmanager/v2)
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=dnitsch_configmanager&metric=bugs)](https://sonarcloud.io/summary/new_code?id=dnitsch_configmanager)
-[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=dnitsch_configmanager&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=dnitsch_configmanager)
-[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=dnitsch_configmanager&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=dnitsch_configmanager)
-[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=dnitsch_configmanager&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=dnitsch_configmanager)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=dnitsch_configmanager&metric=coverage)](https://sonarcloud.io/summary/new_code?id=dnitsch_configmanager)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=DevLabFoundry_configmanager&metric=bugs)](https://sonarcloud.io/summary/new_code?id=DevLabFoundry_configmanager)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=DevLabFoundry_configmanager&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=DevLabFoundry_configmanager)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=DevLabFoundry_configmanager&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=DevLabFoundry_configmanager)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=DevLabFoundry_configmanager&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=DevLabFoundry_configmanager)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=DevLabFoundry_configmanager&metric=coverage)](https://sonarcloud.io/summary/new_code?id=DevLabFoundry_configmanager)
 
 Package used for retrieving application settings from various sources.
 
