@@ -4,7 +4,7 @@ output: prefixed
 debug: false
 
 import:
-  - https://raw.githubusercontent.com/Ensono/eirctl/refs/tags/0.9.3/shared/build/go/eirctl.yaml
+  - https://raw.githubusercontent.com/Ensono/eirctl/refs/tags/0.9.13/shared/build/go/eirctl.yaml
 
 contexts:
   bash:
