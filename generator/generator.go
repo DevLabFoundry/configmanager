@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/lexer"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/DevLabFoundry/configmanager/v3/internal/parser"
@@ -47,9 +47,9 @@ func new(ctx context.Context, opts ...Opts) *Generator {
 		Logger: log.New(io.Discard),
 		ctx:    ctx,
 		// return using default config
+		store:  store.New(ctx),
 		config: *conf,
 	}
-	// g.strategy = nil
 
 	// now apply additional opts
 	for _, o := range opts {
@@ -59,13 +59,13 @@ func new(ctx context.Context, opts ...Opts) *Generator {
 	return g
 }
 
-// // WithStrategyMap
-// //
-// // Adds addtional funcs for storageRetrieval used for testing only
-// func (c *Generator) WithStrategyMap(sm strategy.StrategyFuncMap) *Generator {
-// 	c.strategy = sm
-// 	return c
-// }
+// WithStrategyMap
+//
+// Adds addtional funcs for storageRetrieval used for testing only
+func (c *Generator) WithStores(sm *store.Store) *Generator {
+	c.store = sm
+	return c
+}
 
 // WithConfig uses custom config
 func (c *Generator) WithConfig(cfg *config.GenVarsConfig) *Generator {
@@ -76,11 +76,11 @@ func (c *Generator) WithConfig(cfg *config.GenVarsConfig) *Generator {
 	return c
 }
 
-// WithContext uses caller passed context
-func (c *Generator) WithContext(ctx context.Context) *Generator {
-	c.ctx = ctx
-	return c
-}
+// // WithContext uses caller passed context
+// func (c *Generator) WithContext(ctx context.Context) *Generator {
+// 	c.ctx = ctx
+// 	return c
+// }
 
 // Config gets Config on the GenVars
 func (c *Generator) Config() *config.GenVarsConfig {
@@ -100,12 +100,11 @@ func (c *Generator) Generate(tokens []string) (ReplacedToken, error) {
 
 	// initialise pugins here based on discovered tokens
 	//
-	s, err := store.Init(c.ctx, ntm.TokenSet())
-	if err != nil {
+	// this can only be done once the tokens are known
+	if err := c.store.Init(c.ctx, ntm.TokenSet()); err != nil {
 		return nil, err
 	}
 
-	c.store = s
 	// pass in default initialised retrieveStrategy
 	// input should be
 	rt, err := c.generate(ntm)
@@ -256,7 +255,7 @@ func (n NormalizedTokenSafe) TokenSet() []string {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	ss := []string{}
-	for key, _ := range n.set {
+	for key := range n.set {
 		ss = append(ss, strings.ToLower(key))
 	}
 	return ss

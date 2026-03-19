@@ -3,17 +3,16 @@ package impl_test
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
-	"github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
 	"github.com/DevLabFoundry/configmanager/v3/plugins/vault/impl"
+	"github.com/hashicorp/go-hclog"
 	vault "github.com/hashicorp/vault/api"
 )
 
@@ -25,7 +24,7 @@ func TestMountPathExtract(t *testing.T) {
 		"without leading slash": {
 			func() *config.ParsedTokenConfig {
 				// "VAULT://secret___/demo/configmanager"
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/demo/configmanager")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -34,7 +33,7 @@ func TestMountPathExtract(t *testing.T) {
 		"with leading slash": {
 			func() *config.ParsedTokenConfig {
 				// "VAULT:///secret___/demo/configmanager",
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("/secret___/demo/configmanager")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -42,7 +41,7 @@ func TestMountPathExtract(t *testing.T) {
 			}, "secret"},
 		"with underscore in path name": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("_secret___/demo/configmanager")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -50,7 +49,7 @@ func TestMountPathExtract(t *testing.T) {
 			}, "_secret"},
 		"with double underscore in path name": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("__secret___/demo/configmanager")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -58,7 +57,7 @@ func TestMountPathExtract(t *testing.T) {
 			}, "__secret"},
 		"with multiple paths in mountpath": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret/bar/path___/demo/configmanager")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -98,7 +97,7 @@ func TestVaultScenarios(t *testing.T) {
 	}{
 		"happy return": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/foo")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -128,7 +127,7 @@ func TestVaultScenarios(t *testing.T) {
 		"incorrect json": {
 			func() *config.ParsedTokenConfig {
 				// "VAULT://secret___/foo",
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/foo")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -157,7 +156,7 @@ func TestVaultScenarios(t *testing.T) {
 		},
 		"another return": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret/engine1___/some/other/foo2")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -188,7 +187,7 @@ func TestVaultScenarios(t *testing.T) {
 		"not found": {
 			func() *config.ParsedTokenConfig {
 				// "VAULT://secret___/foo",
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/foo")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -216,7 +215,7 @@ func TestVaultScenarios(t *testing.T) {
 		"403": {
 			func() *config.ParsedTokenConfig {
 				// "VAULT://secret___/some/other/foo2",
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/some/other/foo2")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -244,7 +243,7 @@ func TestVaultScenarios(t *testing.T) {
 		"found but empty": {
 			func() *config.ParsedTokenConfig {
 				// "VAULT://secret___/some/other/foo2",
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/some/other/foo2")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -273,7 +272,7 @@ func TestVaultScenarios(t *testing.T) {
 		},
 		"found but nil returned": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/some/other/foo2")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -301,7 +300,7 @@ func TestVaultScenarios(t *testing.T) {
 		"version provided correctly": {
 			func() *config.ParsedTokenConfig {
 				// "VAULT://secret___/some/other/foo2[version=1]",
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/some/other/foo2")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("version=1")
@@ -331,7 +330,7 @@ func TestVaultScenarios(t *testing.T) {
 		"version provided but unable to parse": {
 			func() *config.ParsedTokenConfig {
 				// "VAULT://secret___/some/other/foo2[version=1a]",
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/some/other/foo2")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("version=1a")
@@ -358,7 +357,7 @@ func TestVaultScenarios(t *testing.T) {
 		},
 		"vault rate limit incorrect": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/some/other/foo2")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -392,7 +391,7 @@ failed to initialize the client`,
 			tearDown := tt.setupEnv()
 			defer tearDown()
 
-			i, err := impl.NewVaultStore(context.TODO(), tt.token(), log.New(io.Discard))
+			i, err := impl.NewVaultStore(context.TODO(), tt.token(), hclog.NewNullLogger())
 			if err != nil {
 				if err.Error() != tt.expect {
 					t.Fatalf("failed to init hashivault, %v", err.Error())
@@ -425,7 +424,7 @@ func TestAwsIamAuth(t *testing.T) {
 	}{
 		"aws_iam auth no role specified": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/some/other/foo2")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("version=1")
@@ -459,7 +458,7 @@ func TestAwsIamAuth(t *testing.T) {
 		},
 		"aws_iam auth incorrectly formatted request": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/some/other/foo2")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("version=1,iam_role=not_a_role")
@@ -506,7 +505,7 @@ incorrect values supplied. failed to initialize the client`,
 		},
 		"aws_iam auth success": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/some/other/foo2")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("iam_role=arn:aws:iam::1111111:role/i-orchestration")
@@ -550,7 +549,7 @@ incorrect values supplied. failed to initialize the client`,
 		},
 		"aws_iam auth no token returned": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.HashicorpVaultPrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.HashicorpVaultPrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("secret___/some/other/foo2")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("iam_role=arn:aws:iam::1111111:role/i-orchestration")
@@ -598,7 +597,7 @@ incorrect values supplied. failed to initialize the client`,
 			ts := httptest.NewServer(tt.mockHanlder(t))
 			tearDown := tt.setupEnv(ts.URL)
 			defer tearDown()
-			i, err := impl.NewVaultStore(context.TODO(), tt.token(), log.New(io.Discard))
+			i, err := impl.NewVaultStore(context.TODO(), tt.token(), hclog.NewNullLogger())
 			if err != nil {
 				// WHAT A CRAP way to do this...
 				if err.Error() != strings.Split(fmt.Sprintf(tt.expect, ts.URL), `%!`)[0] {

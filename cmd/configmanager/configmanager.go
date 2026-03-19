@@ -6,9 +6,9 @@ import (
 	"io"
 
 	"github.com/DevLabFoundry/configmanager/v3"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/generator"
 	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/spf13/cobra"
 )

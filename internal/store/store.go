@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 )
 
 var (
@@ -21,22 +21,20 @@ var (
 	ErrPluginNotFound       = errors.New("plugin does not exist")
 )
 
-// Strategy iface that all store implementations
-// must conform to, in order to be be used by the retrieval implementation
-//
-// Defined on the package for easier re-use across the program
-type Strategy interface {
-	// Value retrieves the underlying value for the token
-	Value() (s string, e error)
-	// SetToken
-	SetToken(s *config.ParsedTokenConfig)
-}
+// // Strategy iface that all store implementations
+// // must conform to, in order to be be used by the retrieval implementation
+// //
+// // Defined on the package for easier re-use across the program
+// type Strategy interface {
+// 	// Value retrieves the underlying value for the token
+// 	Value() (s string, e error)
+// 	// SetToken
+// 	SetToken(s *config.ParsedTokenConfig)
+// }
 
-//
 // It includes the following methods
 //   - fetch plugins from known sources
 //   - maintains a list of tokens answerable by a specified pluginEngine
-
 type pluginMap struct {
 	mu *sync.Mutex
 	// m holds the map of plugins where the key is the lowercased implementation prefix
@@ -56,25 +54,27 @@ const (
 )
 
 type Store struct {
-	pluginLocation []string
-	plugin         pluginMap
-	// PluginCleanUp  func()
+	plugin pluginMap
 }
 
-func Init(ctx context.Context, implt []string) (*Store, error) {
+func New(ctx context.Context) *Store {
 	pm := pluginMap{mu: &sync.Mutex{}, m: make(map[string]*Plugin)}
+	s := &Store{plugin: pm}
+	return s
+}
 
-	// l := []string{""}
-	//
+// Init ensures all the discovered tokens have their implementations initialised
+func (s *Store) Init(ctx context.Context, implt []string) error {
+
 	for _, plugin := range implt {
 		plpath, err := findPlugin(plugin)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		p, err := NewPlugin(ctx, plpath)
-		pm.Add(plugin, p)
+		s.plugin.Add(plugin, p)
 	}
-	return &Store{plugin: pm}, nil
+	return nil
 }
 
 func (s *Store) GetImplementation(implemenation config.ImplementationPrefix) (plugin *Plugin, err error) {

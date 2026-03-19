@@ -1,4 +1,6 @@
-package config
+package token
+
+import "github.com/DevLabFoundry/configmanager/v3/config"
 
 // TokenType is the lexer parsed TokenType
 type TokenType string
@@ -58,7 +60,7 @@ type Source struct {
 type Token struct {
 	Type      TokenType
 	Literal   string
-	ImpPrefix ImplementationPrefix
+	ImpPrefix config.ImplementationPrefix
 	Line      int
 	Column    int
 	Source    Source

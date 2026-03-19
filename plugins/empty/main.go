@@ -1,19 +1,26 @@
+// Package main of empty implementation is used for "unit" testing
+//
+// The TokenStore Value implementation returns the key and metadata passed
+// in the case of key being `err` a simulated error is returned
 package main
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/DevLabFoundry/configmanager/v3/plugins"
 	"github.com/hashicorp/go-plugin"
 )
 
+// TokenStorePlugin here is a sample plugin we can use in tests
+// It handles some basic error scenarios
 type TokenStorePlugin struct{}
 
 func (ts TokenStorePlugin) Value(key string, metadata []byte) (string, error) {
-	// srv, err := impl.NewParamStore(context.Background(), log.New(os.Stderr))
-	// if err != nil {
-	// 	return "", err
-	// }
-	// return srv.Value(key, metadata)
-	return "", nil
+	if key == "err" {
+		return "", errors.New("token store implementation simulated error")
+	}
+	return fmt.Sprintf("%s->%s", key, metadata), nil
 }
 
 func main() {

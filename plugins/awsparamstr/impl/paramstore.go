@@ -3,12 +3,12 @@ package impl
 import (
 	"context"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
-	"github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/plugins"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConf "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/hashicorp/go-hclog"
 )
 
 type paramStoreApi interface {
@@ -20,14 +20,14 @@ type ParamStore struct {
 	ctx    context.Context
 	config *ParamStrConfig
 	token  *config.ParsedTokenConfig
-	logger log.ILogger
+	logger hclog.Logger
 }
 
 type ParamStrConfig struct {
 	// reserved for potential future use
 }
 
-func NewParamStore(ctx context.Context, logger log.ILogger) (*ParamStore, error) {
+func NewParamStore(ctx context.Context, logger hclog.Logger) (*ParamStore, error) {
 	cfg, err := awsConf.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (imp *ParamStore) Value(token string, metadata []byte) (string, error) {
 
 	result, err := imp.svc.GetParameter(ctx, input)
 	if err != nil {
-		imp.logger.Error(plugins.ImplementationNetworkErr, config.ParamStorePrefix, err, token)
+		imp.logger.Error(plugins.ImplementationNetworkErr, "config.ParamStorePrefix", err, token)
 		return "", err
 	}
 

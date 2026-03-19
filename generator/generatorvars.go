@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/spyzhov/ajson"
 )
 

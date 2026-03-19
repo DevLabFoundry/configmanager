@@ -41,14 +41,6 @@ const (
 )
 
 var (
-	// default varPrefix used by the replacer function
-	// any token must beging with one of these else
-	// it will be skipped as not a replaceable token
-	VarPrefix = map[ImplementationPrefix]bool{
-		SecretMgrPrefix: true, ParamStorePrefix: true, AzKeyVaultSecretsPrefix: true,
-		GcpSecretsPrefix: true, HashicorpVaultPrefix: true, AzTableStorePrefix: true,
-		AzAppConfigPrefix: true, UnknownPrefix: true,
-	}
 	ErrConfigValidation = errors.New("config validation failed")
 )
 
@@ -144,8 +136,8 @@ type ParsedTokenConfig struct {
 	sanitizedToken string
 }
 
-// NewToken initialises a *ParsedTokenConfig
-func NewToken(prefix ImplementationPrefix, config GenVarsConfig) (*ParsedTokenConfig, error) {
+// NewParsedToken initialises a *ParsedTokenConfig
+func NewParsedToken(prefix ImplementationPrefix, config GenVarsConfig) (*ParsedTokenConfig, error) {
 	tokenConf := &ParsedTokenConfig{}
 	if err := config.Validate(); err != nil {
 		return nil, err

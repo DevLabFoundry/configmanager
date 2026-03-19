@@ -4,7 +4,7 @@ import (
 	"context"
 	"os/exec"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/plugins"
 	"github.com/hashicorp/go-plugin"
 )

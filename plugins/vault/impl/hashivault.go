@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
-	"github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/plugins"
 
+	"github.com/hashicorp/go-hclog"
 	vault "github.com/hashicorp/vault/api"
 	auth "github.com/hashicorp/vault/api/auth/aws"
 )
@@ -30,7 +30,7 @@ type hashiVaultApi interface {
 type VaultStore struct {
 	svc           hashiVaultApi
 	ctx           context.Context
-	logger        log.ILogger
+	logger        hclog.Logger
 	config        *VaultConfig
 	token         *config.ParsedTokenConfig
 	strippedToken string
@@ -42,7 +42,7 @@ type VaultConfig struct {
 	Role    string `json:"iam_role"`
 }
 
-func NewVaultStore(ctx context.Context, token *config.ParsedTokenConfig, logger log.ILogger) (*VaultStore, error) {
+func NewVaultStore(ctx context.Context, token *config.ParsedTokenConfig, logger hclog.Logger) (*VaultStore, error) {
 	storeConf := &VaultConfig{}
 	_ = token.ParseMetadata(storeConf)
 	imp := &VaultStore{
