@@ -1,9 +1,9 @@
-package plugins
+package tokenstore
 
 import (
 	"context"
 
-	"github.com/DevLabFoundry/configmanager/v3/plugins/proto"
+	"github.com/DevLabFoundry/configmanager/v3/tokenstore/proto"
 )
 
 // GRPCClient is the host process talking to the plugins
@@ -28,9 +28,7 @@ type GRPCServer struct {
 	Impl TokenStore
 }
 
-func (m *GRPCServer) Value(
-	ctx context.Context,
-	req *proto.TokenValueRequest) (*proto.TokenValueResponse, error) {
+func (m *GRPCServer) Value(ctx context.Context, req *proto.TokenValueRequest) (*proto.TokenValueResponse, error) {
 	v, err := m.Impl.Value(req.Token, req.Metadata)
 	return &proto.TokenValueResponse{Value: v}, err
 }

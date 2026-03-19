@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/plugins/awsparamstr/impl"
+	"github.com/DevLabFoundry/configmanager-plugin/awsparamstr/impl"
 	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/ssm/types"

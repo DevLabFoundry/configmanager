@@ -87,8 +87,9 @@ tasks:
         mkdir -p .deps
         unset GOTOOLCHAIN
         ldflags="-s -w -extldflags -static"
-        GOPATH=/eirctl/.deps GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 go build -mod=readonly -buildvcs=false -ldflags="$ldflags" \
-        -o ./plugins/$PLUGIN/bin/$PLUGIN-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX} ./plugins/$PLUGIN/main.go
+        export GOPATH=/eirctl/.deps GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 
+        go build -C ./plugins/$PLUGIN -mod=readonly -buildvcs=false -ldflags="$ldflags" \
+        -o bin/$PLUGIN-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX} main.go
         echo "---"
         echo "Built: $PLUGIN-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX}"
     reset_context: true

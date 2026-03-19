@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 
-	"github.com/DevLabFoundry/configmanager/plugins/awsparamstr/impl"
-	"github.com/DevLabFoundry/configmanager/v3/plugins"
+	"github.com/DevLabFoundry/configmanager-plugin/awsparamstr/impl"
+	"github.com/DevLabFoundry/configmanager/v3/tokenstore"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 )
@@ -29,9 +29,9 @@ func main() {
 	ts := TokenStorePlugin{log: log}
 	plugin.Serve(&plugin.ServeConfig{
 		// Logger: ,
-		HandshakeConfig: plugins.Handshake,
+		HandshakeConfig: tokenstore.Handshake,
 		Plugins: map[string]plugin.Plugin{
-			"configmanager_token_store": &plugins.TokenStoreGRPCPlugin{Impl: ts},
+			"configmanager_token_store": &tokenstore.GRPCPlugin{Impl: ts},
 		},
 		// A non-nil value here enables gRPC serving for this plugin...
 		GRPCServer: plugin.DefaultGRPCServer,

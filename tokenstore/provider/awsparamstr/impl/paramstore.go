@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/DevLabFoundry/configmanager/v3/config"
-	"github.com/DevLabFoundry/configmanager/v3/plugins"
+	"github.com/DevLabFoundry/configmanager/v3/tokenstore"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConf "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -58,7 +58,7 @@ func (imp *ParamStore) Value(token string, metadata []byte) (string, error) {
 
 	result, err := imp.svc.GetParameter(ctx, input)
 	if err != nil {
-		imp.logger.Error(plugins.ImplementationNetworkErr, "config.ParamStorePrefix", err, token)
+		imp.logger.Error(tokenstore.ImplementationNetworkErr, "config.ParamStorePrefix", err, token)
 		return "", err
 	}
 

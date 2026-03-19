@@ -1,4 +1,4 @@
-module github.com/DevLabFoundry/configmanager/plugins/awsparamstr
+module github.com/DevLabFoundry/configmanager-plugin/awsparamstr
 
 go 1.26
 
@@ -43,4 +43,4 @@ require (
 	github.com/hashicorp/go-plugin v1.7.0
 )
 
-replace github.com/DevLabFoundry/configmanager/v3 v3.0.0 => ../../../configmanager
+replace github.com/DevLabFoundry/configmanager/v3 v3.0.0 => ../../../

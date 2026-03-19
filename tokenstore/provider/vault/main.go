@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/DevLabFoundry/configmanager/v3/plugins"
+	"github.com/DevLabFoundry/configmanager/v3/tokenstore"
 	"github.com/hashicorp/go-plugin"
 )
 
@@ -18,9 +18,9 @@ func (ts TokenStorePlugin) Value(key string, metadata []byte) (string, error) {
 
 func main() {
 	plugin.Serve(&plugin.ServeConfig{
-		HandshakeConfig: plugins.Handshake,
+		HandshakeConfig: tokenstore.Handshake,
 		Plugins: map[string]plugin.Plugin{
-			"configmanager_token_store": &plugins.TokenStoreGRPCPlugin{Impl: &TokenStorePlugin{}},
+			"configmanager_token_store": &tokenstore.GRPCPlugin{Impl: &TokenStorePlugin{}},
 		},
 		// A non-nil value here enables gRPC serving for this plugin...
 		GRPCServer: plugin.DefaultGRPCServer,

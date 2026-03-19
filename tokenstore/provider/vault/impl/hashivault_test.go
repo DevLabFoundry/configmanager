@@ -9,11 +9,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DevLabFoundry/configmanager-plugin/vault/impl"
 	"github.com/DevLabFoundry/configmanager/v3/config"
-	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
-	"github.com/DevLabFoundry/configmanager/v3/plugins/vault/impl"
 	"github.com/hashicorp/go-hclog"
 	vault "github.com/hashicorp/vault/api"
+)
+
+const (
+	TestPhrase            string = "got: %v want: %v\n"
+	TestPhraseWithContext string = "%s\n got: %v\n\n want: %v\n"
 )
 
 func TestMountPathExtract(t *testing.T) {
@@ -284,7 +288,7 @@ func TestVaultScenarios(t *testing.T) {
 				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
 					t.Helper()
 					if secretPath != "some/other/foo2" {
-						t.Errorf(testutils.TestPhrase, secretPath, `some/other/foo2`)
+						t.Errorf(TestPhrase, secretPath, `some/other/foo2`)
 					}
 					return &vault.KVSecret{Data: nil}, nil
 				}
@@ -312,7 +316,7 @@ func TestVaultScenarios(t *testing.T) {
 				mv.gv = func(ctx context.Context, secretPath string, version int) (*vault.KVSecret, error) {
 					t.Helper()
 					if secretPath != "some/other/foo2" {
-						t.Errorf(testutils.TestPhrase, secretPath, `some/other/foo2`)
+						t.Errorf(TestPhrase, secretPath, `some/other/foo2`)
 					}
 					m := make(map[string]interface{})
 					m["foo2"] = "dsfsdf3454456"
@@ -342,7 +346,7 @@ func TestVaultScenarios(t *testing.T) {
 				mv.gv = func(ctx context.Context, secretPath string, version int) (*vault.KVSecret, error) {
 					t.Helper()
 					if secretPath != "some/other/foo2" {
-						t.Errorf(testutils.TestPhrase, secretPath, `some/other/foo2`)
+						t.Errorf(TestPhrase, secretPath, `some/other/foo2`)
 					}
 					return nil, nil
 				}
@@ -370,7 +374,7 @@ failed to initialize the client`,
 				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
 					t.Helper()
 					if secretPath != "some/other/foo2" {
-						t.Errorf(testutils.TestPhrase, secretPath, `some/other/foo2`)
+						t.Errorf(TestPhrase, secretPath, `some/other/foo2`)
 					}
 					return &vault.KVSecret{Data: nil}, nil
 				}
@@ -403,12 +407,12 @@ failed to initialize the client`,
 			got, err := i.Value()
 			if err != nil {
 				if err.Error() != tt.expect {
-					t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)
+					t.Errorf(TestPhrase, err.Error(), tt.expect)
 				}
 				return
 			}
 			if got != tt.expect {
-				t.Errorf(testutils.TestPhrase, got, tt.expect)
+				t.Errorf(TestPhrase, got, tt.expect)
 			}
 		})
 	}
@@ -436,7 +440,7 @@ func TestAwsIamAuth(t *testing.T) {
 				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
 					t.Helper()
 					if secretPath != "some/other/foo2" {
-						t.Errorf(testutils.TestPhrase, secretPath, `some/other/foo2`)
+						t.Errorf(TestPhrase, secretPath, `some/other/foo2`)
 					}
 					return &vault.KVSecret{Data: nil}, nil
 				}
@@ -475,7 +479,7 @@ incorrect values supplied. failed to initialize the client`,
 				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
 					t.Helper()
 					if secretPath != "some/other/foo2" {
-						t.Errorf(testutils.TestPhrase, secretPath, `some/other/foo2`)
+						t.Errorf(TestPhrase, secretPath, `some/other/foo2`)
 					}
 					return &vault.KVSecret{Data: nil}, nil
 				}
@@ -518,7 +522,7 @@ incorrect values supplied. failed to initialize the client`,
 				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
 					t.Helper()
 					if secretPath != "some/other/foo2" {
-						t.Errorf(testutils.TestPhrase, secretPath, `some/other/foo2`)
+						t.Errorf(TestPhrase, secretPath, `some/other/foo2`)
 					}
 					m := make(map[string]any)
 					m["foo2"] = "dsfsdf3454456"
@@ -561,7 +565,7 @@ incorrect values supplied. failed to initialize the client`,
 				mv.g = func(ctx context.Context, secretPath string) (*vault.KVSecret, error) {
 					t.Helper()
 					if secretPath != "some/other/foo2" {
-						t.Errorf(testutils.TestPhrase, secretPath, `some/other/foo2`)
+						t.Errorf(TestPhrase, secretPath, `some/other/foo2`)
 					}
 					m := make(map[string]interface{})
 					m["foo2"] = "dsfsdf3454456"
@@ -601,7 +605,7 @@ incorrect values supplied. failed to initialize the client`,
 			if err != nil {
 				// WHAT A CRAP way to do this...
 				if err.Error() != strings.Split(fmt.Sprintf(tt.expect, ts.URL), `%!`)[0] {
-					t.Errorf(testutils.TestPhraseWithContext, "aws iam auth", err.Error(), strings.Split(fmt.Sprintf(tt.expect, ts.URL), `%!`)[0])
+					t.Errorf(TestPhraseWithContext, "aws iam auth", err.Error(), strings.Split(fmt.Sprintf(tt.expect, ts.URL), `%!`)[0])
 					t.Fatalf("failed to init hashivault, %v", err.Error())
 				}
 				return
@@ -611,12 +615,12 @@ incorrect values supplied. failed to initialize the client`,
 			got, err := i.Value()
 			if err != nil {
 				if err.Error() != tt.expect {
-					t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)
+					t.Errorf(TestPhrase, err.Error(), tt.expect)
 				}
 				return
 			}
 			if got != tt.expect {
-				t.Errorf(testutils.TestPhrase, got, tt.expect)
+				t.Errorf(TestPhrase, got, tt.expect)
 			}
 		})
 	}
