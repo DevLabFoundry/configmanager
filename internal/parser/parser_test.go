@@ -90,14 +90,14 @@ func Test_ParserBlocks(t *testing.T) {
 			}
 
 			if len(parsed) != len(tt.expected) {
-				t.Fatalf("parsed statements count does not match\ngot=%d want=%d\nparsed %q",
+				t.Fatalf("parsed statements count does not match\ngot=%d want=%d\nparsed %v",
 					len(parsed),
 					len(tt.expected),
 					parsed)
 			}
 
 			for idx, stmt := range parsed {
-				if !testHelperGenDocBlock(t, stmt, config.ImplementationPrefix(tt.expected[idx][0]), tt.expected[idx][1], tt.expected[idx][2]) {
+				if !testHelperParsedBlock(t, stmt, config.ImplementationPrefix(tt.expected[idx][0]), tt.expected[idx][1], tt.expected[idx][2]) {
 					return
 				}
 			}
@@ -229,60 +229,62 @@ func Test_Parse_should_pass_with_metadata_end_tag(t *testing.T) {
 // 	}
 // }
 
-// func Test_Parse_Path_Keys_WithParsedMetadat(t *testing.T) {
+func Test_Parse_Path_Keys_WithParsedMetadat(t *testing.T) {
+	type version struct {
+		Version string
+	}
+	ttests := map[string]struct {
+		input             string
+		typ               *version
+		wantSanitizedPath string
+		wantKeyPath       string
+	}{
+		"without keysPath": {
+			`AWSSECRETS:///foo[version=1.2.3]`,
+			&version{},
+			"/foo", "",
+		},
+		"with keysPath": {
+			`AWSSECRETS:///foo|path.one[version=1.2.3]`,
+			&version{},
+			"/foo", "path.one",
+		},
+		"nestled in text": {
+			`someQ=AWSPARAMSTR:///path/queryparam|p1[version=1.2.3]&anotherQ`,
+			&version{},
+			"/path/queryparam", "p1",
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			lexerSource.Input = tt.input
+			cfg := config.NewConfig()
+			l := lexer.New(lexerSource, *cfg)
+			p := parser.New(l, cfg).WithLogger(log.New(os.Stderr))
+			parsed, errs := p.Parse()
+			if len(errs) > 0 {
+				t.Fatalf("%v", errs)
+			}
 
-// 	ttests := map[string]struct {
-// 		input             string
-// 		typ               *store.SecretsMgrConfig
-// 		wantSanitizedPath string
-// 		wantKeyPath       string
-// 	}{
-// 		"without keysPath": {
-// 			`AWSSECRETS:///foo[version=1.2.3]`,
-// 			&store.SecretsMgrConfig{},
-// 			"/foo", "",
-// 		},
-// 		"with keysPath": {
-// 			`AWSSECRETS:///foo|path.one[version=1.2.3]`,
-// 			&store.SecretsMgrConfig{},
-// 			"/foo", "path.one",
-// 		},
-// 		"nestled in text": {
-// 			`someQ=AWSPARAMSTR:///path/queryparam|p1[version=1.2.3]&anotherQ`,
-// 			&store.SecretsMgrConfig{},
-// 			"/path/queryparam", "p1",
-// 		},
-// 	}
-// 	for name, tt := range ttests {
-// 		t.Run(name, func(t *testing.T) {
-// 			lexerSource.Input = tt.input
-// 			cfg := config.NewConfig()
-// 			l := lexer.New(lexerSource, *cfg)
-// 			p := parser.New(l, cfg).WithLogger(log.New(os.Stderr))
-// 			parsed, errs := p.Parse()
-// 			if len(errs) > 0 {
-// 				t.Fatalf("%v", errs)
-// 			}
+			for _, p := range parsed {
+				if p.ParsedToken.StoreToken() != tt.wantSanitizedPath {
+					t.Errorf("got %s want %s", p.ParsedToken.StoreToken(), tt.wantSanitizedPath)
+				}
+				if p.ParsedToken.LookupKeys() != tt.wantKeyPath {
+					t.Errorf("got %s want %s", p.ParsedToken.LookupKeys(), tt.wantKeyPath)
+				}
+				if err := p.ParsedToken.ParseMetadata(tt.typ); err != nil {
+					t.Fatal(err)
+				}
+				if tt.typ.Version != "1.2.3" {
+					t.Errorf("got %v wanted 1.2.3", tt.typ.Version)
+				}
+			}
+		})
+	}
+}
 
-// 			for _, p := range parsed {
-// 				if p.ParsedToken.StoreToken() != tt.wantSanitizedPath {
-// 					t.Errorf("got %s want %s", p.ParsedToken.StoreToken(), tt.wantSanitizedPath)
-// 				}
-// 				if p.ParsedToken.LookupKeys() != tt.wantKeyPath {
-// 					t.Errorf("got %s want %s", p.ParsedToken.LookupKeys(), tt.wantKeyPath)
-// 				}
-// 				if err := p.ParsedToken.ParseMetadata(tt.typ); err != nil {
-// 					t.Fatal(err)
-// 				}
-// 				if tt.typ.Version != "1.2.3" {
-// 					t.Errorf("got %v wanted 1.2.3", tt.typ.Version)
-// 				}
-// 			}
-// 		})
-// 	}
-// }
-
-func testHelperGenDocBlock(t *testing.T, stmtBlock parser.ConfigManagerTokenBlock, tokenType config.ImplementationPrefix, tokenValue, keysLookupPath string) bool {
+func testHelperParsedBlock(t *testing.T, stmtBlock parser.ConfigManagerTokenBlock, tokenType config.ImplementationPrefix, tokenValue, keysLookupPath string) bool {
 	t.Helper()
 	if stmtBlock.ParsedToken.Prefix() != tokenType {
 		t.Errorf("got=%q, wanted stmtBlock.ImpPrefix = '%v'.", stmtBlock.ParsedToken.Prefix(), tokenType)

@@ -61,6 +61,10 @@ pipelines:
       name: vault
       env:
         PLUGIN: vault
+    - task: go:build:plugin
+      name: empty
+      env:
+        PLUGIN: empty
 
   scan:plugins:
     - task: trivy:file:system:sbom
@@ -88,7 +92,7 @@ tasks:
         unset GOTOOLCHAIN
         ldflags="-s -w -extldflags -static"
         export GOPATH=/eirctl/.deps GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 
-        go build -C ./plugins/$PLUGIN -mod=readonly -buildvcs=false -ldflags="$ldflags" \
+        go build -C ./tokenstore/provider/$PLUGIN -mod=readonly -buildvcs=false -ldflags="$ldflags" \
         -o bin/$PLUGIN-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX} main.go
         echo "---"
         echo "Built: $PLUGIN-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX}"
@@ -166,7 +170,7 @@ tasks:
     context: bash
     command:
       - |
-        sed -i 's|github.com/DevLabFoundry/configmanager/v2/||g' .coverage/out
+        sed -i 's|github.com/DevLabFoundry/configmanager/v3/||g' .coverage/out
         echo "Coverage file first 20 lines after conversion:"
         head -20 .coverage/out
         echo "Coverage file line count:"

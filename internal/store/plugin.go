@@ -5,7 +5,7 @@ import (
 	"os/exec"
 
 	"github.com/DevLabFoundry/configmanager/v3/config"
-	"github.com/DevLabFoundry/configmanager/v3/plugins"
+	"github.com/DevLabFoundry/configmanager/v3/tokenstore"
 	"github.com/hashicorp/go-plugin"
 )
 
@@ -16,15 +16,15 @@ type Plugin struct {
 	SourcePath      string
 	Version         string
 	ClientCleanUp   func()
-	tokenStore      plugins.TokenStore
+	tokenStore      tokenstore.TokenStore
 }
 
 // NewPlugin Plugin gets called once per implementation
 func NewPlugin(ctx context.Context, path string) (*Plugin, error) {
 	// We're a host. Start by launching the plugin process.
 	client := plugin.NewClient(&plugin.ClientConfig{
-		HandshakeConfig:  plugins.Handshake,
-		Plugins:          plugin.PluginSet{"configmanager_token_store": &plugins.TokenStoreGRPCPlugin{}},
+		HandshakeConfig:  tokenstore.Handshake,
+		Plugins:          plugin.PluginSet{"configmanager_token_store": &tokenstore.GRPCPlugin{}},
 		Cmd:              exec.Command(path),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 	})
@@ -42,7 +42,7 @@ func NewPlugin(ctx context.Context, path string) (*Plugin, error) {
 		return nil, err
 	}
 
-	ts := raw.(plugins.TokenStore)
+	ts := raw.(tokenstore.TokenStore)
 
 	p := &Plugin{
 		ClientCleanUp: client.Kill,

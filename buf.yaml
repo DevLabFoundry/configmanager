@@ -1,6 +1,6 @@
 version: v2
 modules:
-  - path: ./plugins/proto
+  - path: ./tokenstore/proto
 lint:
   use:
     - STANDARD

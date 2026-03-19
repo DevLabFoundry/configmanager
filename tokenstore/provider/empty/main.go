@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/DevLabFoundry/configmanager/v3/tokenstore"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 )
 
@@ -25,6 +26,7 @@ func (ts TokenStorePlugin) Value(key string, metadata []byte) (string, error) {
 
 func main() {
 	plugin.Serve(&plugin.ServeConfig{
+		Logger:          hclog.NewNullLogger(),
 		HandshakeConfig: tokenstore.Handshake,
 		Plugins: map[string]plugin.Plugin{
 			"configmanager_token_store": &tokenstore.GRPCPlugin{Impl: &TokenStorePlugin{}},
