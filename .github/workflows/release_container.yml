@@ -4,13 +4,13 @@ on:
   push:
     branches:
       - feat/container-push
-  # workflow_run:
-  #   workflows: ["Lint and Test"]
-  #   types:
-  #     - completed
-  #   branches:
-  #     - main
-  #     - master
+  workflow_run:
+    workflows: ["Lint and Test"]
+    types:
+      - completed
+    branches:
+      - main
+      - master
 
 permissions:
   contents: write
