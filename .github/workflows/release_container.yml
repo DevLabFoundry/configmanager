@@ -1,16 +1,20 @@
 name: Publish Container
 
 on:
-  workflow_run:
-    workflows: ['Lint and Test']
-    types:
-      - completed
-    branches: 
-      - main
+  push:
+    branches:
+      - feat/container-push
+  # workflow_run:
+  #   workflows: ["Lint and Test"]
+  #   types:
+  #     - completed
+  #   branches:
+  #     - main
+  #     - master
 
 permissions:
   contents: write
-  packages: write 
+  packages: write
 
 jobs:
   set-version-tag:
@@ -27,7 +31,7 @@ jobs:
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v3.0
         with:
-          versionSpec: '5.x'
+          versionSpec: "5.x"
       - name: Set SemVer Version
         uses: gittools/actions/gitversion/execute@v3.0
         id: gitversion
@@ -62,5 +66,5 @@ jobs:
           push: true
           build-args: Version=${{ needs.set-version-tag.outputs.semVer }},Revision=${{ github.sha }}
           tags: |
-            ghcr.io/ensono/eirctl:${{ needs.set-version-tag.outputs.semVer }}
-          platforms: linux/amd64,linux/arm64  # adjust as needed
+            ghcr.io/devlabfoundry/configmanager:${{ needs.set-version-tag.outputs.semVer }}
+          platforms: linux/amd64,linux/arm64 # adjust as needed
