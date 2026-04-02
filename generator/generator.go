@@ -59,7 +59,7 @@ func new(ctx context.Context, opts ...Opts) *Generator {
 	return g
 }
 
-// WithStrategyMap
+// WithStores assigns additional stores to the strategy
 //
 // Adds addtional funcs for storageRetrieval used for testing only
 func (c *Generator) WithStores(sm *store.Store) *Generator {

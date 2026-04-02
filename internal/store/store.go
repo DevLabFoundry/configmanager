@@ -53,13 +53,22 @@ const (
 	namePattern string = "%s-%s-%s"
 )
 
+type osOps struct {
+	UserHomeDir func() (string, error)
+	Getwd       func() (dir string, err error)
+}
+
 type Store struct {
 	plugin pluginMap
+	osOps  osOps
 }
 
 func New(ctx context.Context) *Store {
 	pm := pluginMap{mu: &sync.Mutex{}, m: make(map[string]*Plugin)}
-	s := &Store{plugin: pm}
+	s := &Store{
+		plugin: pm,
+		osOps:  osOps{UserHomeDir: os.UserHomeDir, Getwd: os.Getwd},
+	}
 	return s
 }
 
@@ -67,11 +76,15 @@ func New(ctx context.Context) *Store {
 func (s *Store) Init(ctx context.Context, implt []string) error {
 
 	for _, plugin := range implt {
-		plpath, err := findPlugin(plugin)
+		plpath, err := s.findPlugin(plugin)
 		if err != nil {
 			return err
 		}
 		p, err := NewPlugin(ctx, plpath)
+		if err != nil {
+			// wrap in init error
+			return err
+		}
 		s.plugin.Add(plugin, p)
 	}
 	return nil
@@ -98,7 +111,7 @@ func (s *Store) PluginCleanUp() {
 //
 //	current dir
 //	home dir
-func findPlugin(plugin string) (string, error) {
+func (s *Store) findPlugin(plugin string) (string, error) {
 	// fallback locations
 	// current dir
 	cwd, err := os.Getwd()

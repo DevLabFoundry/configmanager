@@ -19,7 +19,7 @@ contexts:
 
   go1xalpine:
     container:
-      name: mirror.gcr.io/golang:1.25-alpine
+      name: mirror.gcr.io/golang:1.26-alpine
     envfile:
       exclude:
         - GO
