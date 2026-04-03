@@ -17,6 +17,14 @@ import (
 	"github.com/DevLabFoundry/configmanager/v3/internal/store"
 )
 
+var ErrTokenNotFound = errors.New("token not found")
+var ErrProvidersNotFound = errors.New("providers not initialised")
+
+type storeIface interface {
+	GetValue(implemenation *config.ParsedTokenConfig) (string, error)
+	Init(ctx context.Context, implt []string) error
+}
+
 // Generator is the main struct holding the
 // strategy patterns iface
 // any initialised config if overridded with withers
@@ -26,7 +34,7 @@ import (
 type Generator struct {
 	Logger log.ILogger
 	// strategy strategy.StrategyFuncMap
-	store  *store.Store
+	store  storeIface
 	ctx    context.Context
 	config config.GenVarsConfig
 }
@@ -62,7 +70,7 @@ func new(ctx context.Context, opts ...Opts) *Generator {
 // WithStores assigns additional stores to the strategy
 //
 // Adds addtional funcs for storageRetrieval used for testing only
-func (c *Generator) WithStores(sm *store.Store) *Generator {
+func (c *Generator) WithStores(sm storeIface) *Generator {
 	c.store = sm
 	return c
 }
@@ -102,7 +110,7 @@ func (c *Generator) Generate(tokens []string) (ReplacedToken, error) {
 	//
 	// this can only be done once the tokens are known
 	if err := c.store.Init(c.ctx, ntm.TokenSet()); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w, %v", ErrProvidersNotFound, err)
 	}
 
 	// pass in default initialised retrieveStrategy
@@ -111,6 +119,7 @@ func (c *Generator) Generate(tokens []string) (ReplacedToken, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return rt, nil
 }
 
@@ -143,8 +152,7 @@ func (c *Generator) DiscoverTokens(text string) (NormalizedTokenSafe, error) {
 // and any characters
 func IsParsed(v any, trm ReplacedToken) bool {
 	str := fmt.Sprint(v)
-	err := json.Unmarshal([]byte(str), &trm)
-	return err == nil
+	return json.Unmarshal([]byte(str), &trm) == nil
 }
 
 // generate initiates waitGroup to handle 1 or more normalized network calls concurrently to the underlying stores
@@ -160,9 +168,6 @@ func (c *Generator) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
 
 	wg := &sync.WaitGroup{}
 
-	// initialise the stores here
-	// s := strategy.New(c.config, c.Logger, strategy.WithStrategyFuncMap(c.strategy))
-
 	// safe read of normalized token map
 	// this will ensure that we are minimizing
 	// the number of network calls to each underlying store
@@ -175,18 +180,12 @@ func (c *Generator) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
 		wg.Go(func() {
 			prsdTkn.resp = &TokenResponse{}
 			prsdTkn.resp.WithKey(token)
-			storeStrategy, err := c.store.GetImplementation(token.Prefix())
+			val, err := c.store.GetValue(token)
 			if err != nil {
 				prsdTkn.resp.Err = err
 				return
 			}
-			// storeStrategy.GetValue(token)
-			v, err := storeStrategy.GetValue(token)
-			if err != nil {
-				prsdTkn.resp.Err = err
-				return
-			}
-			prsdTkn.resp.WithValue(v)
+			prsdTkn.resp.WithValue(val)
 		})
 	}
 
@@ -195,6 +194,7 @@ func (c *Generator) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
 	// now we fan out the normalized value to ReplacedToken map
 	// this will ensure all found tokens will have a value assigned to them
 	replacedToken := make(ReplacedToken)
+	notfound := []string{}
 	for _, r := range ntm.GetMap() {
 		if r == nil {
 			// defensive as this shouldn't happen
@@ -202,11 +202,18 @@ func (c *Generator) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
 		}
 		if r.resp.Err != nil {
 			c.Logger.Debug("cr.err %v, for token: %s", r.resp.Err, r.resp.Key().String())
+			if !c.config.LaxModeEnabled() {
+				// we want to collect all the errors
+				notfound = append(notfound, fmt.Sprintf("token: %s\n", r.resp.Key().String()))
+			}
 			continue
 		}
 		for _, originalToken := range r.parsedTokens {
 			replacedToken[originalToken.String()] = keySeparatorLookup(originalToken, r.resp.Value())
 		}
+	}
+	if len(notfound) > 0 {
+		return replacedToken, fmt.Errorf("%w\n%v", ErrTokenNotFound, notfound)
 	}
 	return replacedToken, nil
 }

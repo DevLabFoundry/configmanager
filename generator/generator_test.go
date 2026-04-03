@@ -2,204 +2,217 @@ package generator_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/generator"
+	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
 )
 
-type mockGenerate struct {
-	inToken, value string
-	err            error
+type mockStore struct {
+	getVal func(implemenation *config.ParsedTokenConfig) (string, error)
+	init   func(ctx context.Context, implt []string) error
 }
 
-func (m *mockGenerate) SetToken(s *config.ParsedTokenConfig) {
-}
-func (m *mockGenerate) Value() (s string, e error) {
-	return m.value, m.err
+func (m mockStore) GetValue(implemenation *config.ParsedTokenConfig) (string, error) {
+	return m.getVal(implemenation)
 }
 
-// func TestGenerate(t *testing.T) {
+func (m mockStore) Init(ctx context.Context, implt []string) error {
+	if m.init != nil {
+		return m.init(ctx, implt)
+	}
+	return nil
+}
 
-// 	t.Run("succeeds with funcMap", func(t *testing.T) {
-// 		var custFunc = func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-// 			m := &mockGenerate{"AWSPARAMSTR://mountPath/token", "bar", nil}
-// 			return m, nil
-// 		}
+func Test_Generate(t *testing.T) {
 
-// 		g := generator.New(context.TODO(), func(gv *generator.Generator) {
-// 			gv.Logger = log.New(&bytes.Buffer{})
-// 		})
-// 		g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: custFunc})
-// 		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
+	t.Run("succeeds", func(t *testing.T) {
+		m := &mockStore{}
+		m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+			return `{"foo":"bar","key1":{"key2":"val"}}`, nil
+		}
+		g := generator.New(context.TODO())
+		g.WithStores(m)
 
-// 		if err != nil {
-// 			t.Fatal("errored on generate")
-// 		}
-// 		if len(got) != 1 {
-// 			t.Errorf(testutils.TestPhraseWithContext, "incorect number in a map", len(got), 1)
-// 		}
-// 	})
+		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
 
-// 	t.Run("errors in retrieval and logs it out", func(t *testing.T) {
-// 		var custFunc = func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-// 			m := &mockGenerate{"AWSPARAMSTR://mountPath/token", "bar", fmt.Errorf("failed to get value")}
-// 			return m, nil
-// 		}
+		if err != nil {
+			t.Fatal("errored on generate")
+		}
+		if len(got) != 1 {
+			t.Errorf(testutils.TestPhraseWithContext, "incorect number in a map", len(got), 1)
+		}
+	})
 
-// 		g := generator.New(context.TODO())
-// 		g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: custFunc})
-// 		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
+	t.Run("fails to init providers", func(t *testing.T) {
+		m := &mockStore{}
+		m.init = func(ctx context.Context, implt []string) error {
+			return fmt.Errorf("failed to find providers")
+		}
 
-// 		if err != nil {
-// 			t.Fatal("errored on generate")
-// 		}
-// 		if len(got) != 0 {
-// 			t.Errorf(testutils.TestPhraseWithContext, "incorect number in a map", len(got), 0)
-// 		}
-// 	})
+		g := generator.New(context.TODO())
+		g.WithStores(m)
 
-// 	t.Run("retrieves values correctly from a keylookup inside", func(t *testing.T) {
-// 		var custFunc = func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-// 			m := &mockGenerate{"token-unused", `{"foo":"bar","key1":{"key2":"val"}}`, nil}
-// 			return m, nil
-// 		}
+		_, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
 
-// 		g := generator.New(context.TODO())
-// 		g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: custFunc, store: nil})
-// 		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token|key1.key2"})
+		if err == nil {
+			t.Fatal("got nil, wanted err")
+		}
+		if !errors.Is(err, generator.ErrProvidersNotFound) {
+			t.Errorf("got %v, wanted %v", err, generator.ErrProvidersNotFound)
+		}
+	})
+	t.Run("ignores no tokens", func(t *testing.T) {
+		m := &mockStore{}
+		g := generator.New(context.TODO())
+		g.WithStores(m)
 
-// 		if err != nil {
-// 			t.Fatal("errored on generate")
-// 		}
-// 		if len(got) != 1 {
-// 			t.Errorf(testutils.TestPhraseWithContext, "incorect number in a map", len(got), 0)
-// 		}
-// 		if got["AWSPARAMSTR://mountPath/token|key1.key2"] != "val" {
-// 			t.Errorf(testutils.TestPhraseWithContext, "incorrect value returned in parsedMap", got["AWSPARAMSTR://mountPath/token|key1.key2"], "val")
-// 		}
-// 	})
-// }
+		_, err := g.Generate([]string{})
 
-// func TestGenerate_withKeys_lookup(t *testing.T) {
-// 	ttests := map[string]struct {
-// 		custFunc  strategy.StrategyFunc
-// 		token     string
-// 		expectVal string
-// 	}{
-// 		"retrieves string value correctly from a keylookup inside": {
-// 			custFunc: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-// 				m := &mockGenerate{"token", `{"foo":"bar","key1":{"key2":"val"}}`, nil}
-// 				return m, nil
-// 			},
-// 			token:     "AWSPARAMSTR://mountPath/token|key1.key2",
-// 			expectVal: "val",
-// 		},
-// 		"retrieves number value correctly from a keylookup inside": {
-// 			custFunc: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-// 				m := &mockGenerate{"token", `{"foo":"bar","key1":{"key2":123}}`, nil}
-// 				return m, nil
-// 			},
-// 			token:     "AWSPARAMSTR://mountPath/token|key1.key2",
-// 			expectVal: "123",
-// 		},
-// 		"retrieves nothing as keylookup is incorrect": {
-// 			custFunc: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-// 				m := &mockGenerate{"token", `{"foo":"bar","key1":{"key2":123}}`, nil}
-// 				return m, nil
-// 			},
-// 			token:     "AWSPARAMSTR://mountPath/token|noprop",
-// 			expectVal: "",
-// 		},
-// 		"retrieves value as is due to incorrectly stored json in backing store": {
-// 			custFunc: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-// 				m := &mockGenerate{"token", `foo":"bar","key1":{"key2":123}}`, nil}
-// 				return m, nil
-// 			},
-// 			token:     "AWSPARAMSTR://mountPath/token|noprop",
-// 			expectVal: `foo":"bar","key1":{"key2":123}}`,
-// 		},
-// 	}
-// 	for name, tt := range ttests {
-// 		t.Run(name, func(t *testing.T) {
-// 			g := generator.New(context.TODO())
-// 			g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: tt.custFunc})
-// 			got, err := g.Generate([]string{tt.token})
+		if err != nil {
+			t.Fatal("got nil, wanted err")
+		}
+	})
+	t.Run("lax mode enabled - maintains v2 behaviour no rerrors in retrieval", func(t *testing.T) {
 
-// 			if err != nil {
-// 				t.Fatal("errored on generate")
-// 			}
-// 			if len(got) != 1 {
-// 				t.Errorf(testutils.TestPhraseWithContext, "incorect number in a map", len(got), 0)
-// 			}
-// 			if got[tt.token] != tt.expectVal {
-// 				t.Errorf(testutils.TestPhraseWithContext, "incorrect value returned in parsedMap", got[tt.token], tt.expectVal)
-// 			}
-// 		})
-// 	}
-// }
+		m := &mockStore{}
+		m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+			return ``, fmt.Errorf("failed to get value")
+		}
 
-// func Test_IsParsed(t *testing.T) {
-// 	ttests := map[string]struct {
-// 		val      any
-// 		isParsed bool
-// 	}{
-// 		"not parseable": {
-// 			`notparseable`, false,
-// 		},
-// 		"one level parseable": {
-// 			`{"parseable":"foo"}`, true,
-// 		},
-// 		"incorrect JSON": {
-// 			`parseable":"foo"}`, false,
-// 		},
-// 	}
-// 	for name, tt := range ttests {
-// 		t.Run(name, func(t *testing.T) {
-// 			typ := generator.ReplacedToken{}
-// 			got := generator.IsParsed(tt.val, typ)
-// 			if got != tt.isParsed {
-// 				t.Errorf(testutils.TestPhraseWithContext, "unexpected IsParsed", got, tt.isParsed)
-// 			}
-// 		})
-// 	}
-// }
+		g := generator.New(context.TODO())
+		g.Config().WithLaxMode(true)
+		g.WithStores(m)
 
-// func TestGenVars_NormalizeRawToken(t *testing.T) {
+		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
 
-// 	t.Run("multiple tokens", func(t *testing.T) {
-// 		g := generator.New(context.TODO())
+		if err != nil {
+			t.Fatal("errored on generate")
+		}
+		if len(got) != 0 {
+			t.Errorf(testutils.TestPhraseWithContext, "incorect number in a map", len(got), 0)
+		}
+	})
+	t.Run("errors in retrieval and logs it out", func(t *testing.T) {
+		m := &mockStore{}
+		m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+			return ``, fmt.Errorf("failed to get value")
+		}
+		g := generator.New(context.TODO())
+		g.WithStores(m)
 
-// 		input := `GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
-// 			GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|a
-// 			GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|b
-// 			GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|c
-// 			AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
-// 			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]
-// 			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|key1
-// 			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|key2
-// 			AZKVSECRET:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
-// 			VAULT:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj`
-// 		want := []string{"GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
-// 			"AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
-// 			"AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]",
-// 			"AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
-// 			"AZKVSECRET:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
-// 			"VAULT:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj"}
-// 		got, err := g.DiscoverTokens(input)
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-// 		if len(got.GetMap()) != len(want) {
-// 			t.Errorf("got %v wanted %d", len(got.GetMap()), len(want))
-// 		}
-// 		for key := range got.GetMap() {
-// 			if !slices.Contains(want, key) {
-// 				t.Errorf("got %s, wanted to be included in %v", key, want)
-// 			}
-// 		}
-// 	})
-// }
+		_, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
+
+		if err == nil {
+			t.Fatal("got nil, wanted err")
+		}
+		if !errors.Is(err, generator.ErrTokenNotFound) {
+			t.Errorf("got %v, wanted %v", err, generator.ErrTokenNotFound)
+		}
+	})
+}
+
+func TestGenerate_withKeys_lookup(t *testing.T) {
+
+	ttests := map[string]struct {
+		store     func(t *testing.T) *mockStore
+		token     string
+		expectVal string
+	}{
+		"retrieves string value correctly from a keylookup inside": {
+			store: func(t *testing.T) *mockStore {
+				m := &mockStore{}
+				m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+					return `{"foo":"bar","key1":{"key2":"val"}}`, nil
+				}
+				return m
+			},
+			token:     "AWSPARAMSTR://mountPath/token|key1.key2",
+			expectVal: "val",
+		},
+		"retrieves number value correctly from a keylookup inside": {
+
+			store: func(t *testing.T) *mockStore {
+				m := &mockStore{}
+				m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+					return `{"foo":"bar","key1":{"key2":123}}`, nil
+				}
+				return m
+			},
+			token:     "AWSPARAMSTR://mountPath/token|key1.key2",
+			expectVal: "123",
+		},
+		"retrieves nothing as keylookup is incorrect": {
+			store: func(t *testing.T) *mockStore {
+				m := &mockStore{}
+				m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+					return `{"foo":"bar","key1":{"key2":123}}`, nil
+				}
+				return m
+			},
+			token:     "AWSPARAMSTR://mountPath/token|noprop",
+			expectVal: "",
+		},
+		"retrieves value as is due to incorrectly stored json in backing store": {
+			store: func(t *testing.T) *mockStore {
+				m := &mockStore{}
+				m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+					return `foo":"bar","key1":{"key2":123}}`, nil
+				}
+				return m
+			},
+			token:     "AWSPARAMSTR://mountPath/token|noprop",
+			expectVal: `foo":"bar","key1":{"key2":123}}`,
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			g := generator.New(context.TODO())
+			g.WithStores(tt.store(t))
+			got, err := g.Generate([]string{tt.token})
+
+			if err != nil {
+				t.Fatal("errored on generate")
+			}
+			if len(got) != 1 {
+				t.Errorf(testutils.TestPhraseWithContext, "incorect number in a map", len(got), 0)
+			}
+			if got[tt.token] != tt.expectVal {
+				t.Errorf(testutils.TestPhraseWithContext, "incorrect value returned in parsedMap", got[tt.token], tt.expectVal)
+			}
+		})
+	}
+}
+
+func Test_IsParsed(t *testing.T) {
+	ttests := map[string]struct {
+		val      any
+		isParsed bool
+	}{
+		"not parseable": {
+			`notparseable`, false,
+		},
+		"one level parseable": {
+			`{"parseable":"foo"}`, true,
+		},
+		"incorrect JSON": {
+			`parseable":"foo"}`, false,
+		},
+	}
+	for name, tt := range ttests {
+		t.Run(name, func(t *testing.T) {
+			typ := generator.ReplacedToken{}
+			got := generator.IsParsed(tt.val, typ)
+			if got != tt.isParsed {
+				t.Errorf(testutils.TestPhraseWithContext, "unexpected IsParsed", got, tt.isParsed)
+			}
+		})
+	}
+}
 
 func Test_ConfigManager_DiscoverTokens(t *testing.T) {
 	ttests := map[string]struct {
@@ -302,11 +315,11 @@ func Test_ConfigManager_DiscoverTokens(t *testing.T) {
 			if len(got) != len(tt.expect) {
 				t.Errorf("wrong nmber of tokens resolved\ngot (%d) want (%d)", len(got), len(tt.expect))
 			}
-			// for _, v := range got {
-			// 	if !slices.Contains(tt.expect, v.String()) {
-			// 		t.Errorf("got (%s) not found in expected slice (%v)", v, tt.expect)
-			// 	}
-			// }
+			for key := range got {
+				if !slices.Contains(tt.expect, key) {
+					t.Errorf("got (%s) not found in expected slice (%v)", key, tt.expect)
+				}
+			}
 		})
 	}
 }

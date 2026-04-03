@@ -90,12 +90,12 @@ func (s *Store) Init(ctx context.Context, implt []string) error {
 	return nil
 }
 
-func (s *Store) GetImplementation(implemenation config.ImplementationPrefix) (plugin *Plugin, err error) {
-	var exists bool
-	if plugin, exists = s.plugin.m[strings.ToLower(string(implemenation))]; exists {
-		return plugin, nil
+func (s *Store) GetValue(implemenation *config.ParsedTokenConfig) (string, error) {
+	plugin, exists := s.plugin.m[strings.ToLower(string(implemenation.Prefix()))]
+	if !exists {
+		return "", ErrPluginNotFound
 	}
-	return nil, ErrPluginNotFound
+	return plugin.GetValue(implemenation)
 }
 
 // PluginCleanUp ensures the plugins are properly shut down

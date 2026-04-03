@@ -50,6 +50,7 @@ type GenVarsConfig struct {
 	tokenSeparator string
 	keySeparator   string
 	enableEnvSubst bool
+	enableLaxMode  bool
 	// parseAdditionalVars func(token string) TokenConfigVars
 }
 
@@ -83,9 +84,15 @@ func (c *GenVarsConfig) WithKeySeparator(keySeparator string) *GenVarsConfig {
 	return c
 }
 
-// WithKeySeparator adds a custom key separotor
+// WithEnvSubst adds env subst flag
 func (c *GenVarsConfig) WithEnvSubst(enabled bool) *GenVarsConfig {
 	c.enableEnvSubst = enabled
+	return c
+}
+
+// WithLaxMode adds lax mode enabled flag
+func (c *GenVarsConfig) WithLaxMode(enabled bool) *GenVarsConfig {
+	c.enableLaxMode = enabled
 	return c
 }
 
@@ -107,6 +114,13 @@ func (c *GenVarsConfig) KeySeparator() string {
 // EnvSubstEnabled returns whether or not envsubst is enabled
 func (c *GenVarsConfig) EnvSubstEnabled() bool {
 	return c.enableEnvSubst
+}
+
+// LaxModeEnabled returns whether or not lax mode is enabled
+//
+// It is disabled by default which will break the existing v2 behaviour
+func (c *GenVarsConfig) LaxModeEnabled() bool {
+	return c.enableLaxMode
 }
 
 // Config returns the derefed value

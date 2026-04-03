@@ -51,6 +51,10 @@ func NewPlugin(ctx context.Context, path string) (*Plugin, error) {
 	return p, nil
 }
 
+func (p *Plugin) WithTokenStore(ts tokenstore.TokenStore) {
+	p.tokenStore = ts
+}
+
 func (p *Plugin) GetValue(token *config.ParsedTokenConfig) (string, error) {
 	result, err := p.tokenStore.Value(token.StoreToken(), []byte(token.Metadata()))
 	if err != nil {
