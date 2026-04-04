@@ -116,12 +116,12 @@ func (s *Store) findPlugin(plugin string) (string, error) {
 	if val, exists := os.LookupEnv(config.CONFIGMANAGER_DIR); exists {
 		fallbackPath = append([]string{val}, fallbackPath...)
 	}
-	for _, p := range []string{os.Getenv(config.CONFIGMANAGER_DIR), cwd, hd} {
+	for _, p := range fallbackPath {
 		ff := path.Join(p, loc, plugin, fmt.Sprintf(namePattern, plugin, runtime.GOOS, runtime.GOARCH))
 		if _, err := os.Stat(ff); err == nil {
 			// break on first non nil error
 			return ff, nil
 		}
 	}
-	return "", fmt.Errorf("configmanger provider: ( %s ) %w", plugin, ErrPluginNotFound)
+	return "", fmt.Errorf("configmanager provider: ( %s ) %w", plugin, ErrPluginNotFound)
 }
