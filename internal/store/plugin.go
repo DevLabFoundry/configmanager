@@ -2,12 +2,17 @@ package store
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os/exec"
 
 	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/tokenstore"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 )
+
+var ErrTokenRetrieval = errors.New("failed to exchange token for value")
 
 // Plugin is responsible for managing the plugin lifecycle
 // within the configmanager flow. Each Implementation will initialise exactly one instance of the plugin
@@ -27,6 +32,7 @@ func NewPlugin(ctx context.Context, path string) (*Plugin, error) {
 		Plugins:          plugin.PluginSet{"configmanager_token_store": &tokenstore.GRPCPlugin{}},
 		Cmd:              exec.Command(path),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
+		Logger:           hclog.NewNullLogger(),
 	})
 	// Connect via RPC
 	rpcClient, err := client.Client()
@@ -58,7 +64,7 @@ func (p *Plugin) WithTokenStore(ts tokenstore.TokenStore) {
 func (p *Plugin) GetValue(token *config.ParsedTokenConfig) (string, error) {
 	result, err := p.tokenStore.Value(token.StoreToken(), []byte(token.Metadata()))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w - (%s), %v", ErrRetrieveFailed, token.String(), err)
 	}
 	return result, nil
 }

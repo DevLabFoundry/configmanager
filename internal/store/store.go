@@ -21,17 +21,6 @@ var (
 	ErrPluginNotFound       = errors.New("plugin does not exist")
 )
 
-// // Strategy iface that all store implementations
-// // must conform to, in order to be be used by the retrieval implementation
-// //
-// // Defined on the package for easier re-use across the program
-// type Strategy interface {
-// 	// Value retrieves the underlying value for the token
-// 	Value() (s string, e error)
-// 	// SetToken
-// 	SetToken(s *config.ParsedTokenConfig)
-// }
-
 // It includes the following methods
 //   - fetch plugins from known sources
 //   - maintains a list of tokens answerable by a specified pluginEngine
@@ -122,12 +111,17 @@ func (s *Store) findPlugin(plugin string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for _, p := range []string{cwd, hd} {
+
+	fallbackPath := []string{cwd, hd}
+	if val, exists := os.LookupEnv(config.CONFIGMANAGER_DIR); exists {
+		fallbackPath = append([]string{val}, fallbackPath...)
+	}
+	for _, p := range []string{os.Getenv(config.CONFIGMANAGER_DIR), cwd, hd} {
 		ff := path.Join(p, loc, plugin, fmt.Sprintf(namePattern, plugin, runtime.GOOS, runtime.GOARCH))
 		if _, err := os.Stat(ff); err == nil {
 			// break on first non nil error
 			return ff, nil
 		}
 	}
-	return "", ErrPluginNotFound
+	return "", fmt.Errorf("configmanger provider: ( %s ) %w", plugin, ErrPluginNotFound)
 }

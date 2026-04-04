@@ -9,6 +9,10 @@ import (
 
 const (
 	SELF_NAME = "configmanager"
+	// CONFIGMANAGER_DIR is used for any operations that require a lookup of dependencies/providers
+	//
+	// If it is empty or unset the default locations for these is `$PWD/.configmanager` and then `~/.configmanager`
+	CONFIGMANAGER_DIR string = "CONFIGMANAGER_DIR"
 )
 
 const (

@@ -33,8 +33,11 @@ pipelines:
       name: empty
       env:
         PLUGIN: empty
-    - pipeline: test:unit
+    - task: move:empty:provider
+      condition: if [ -z "$(ls -A tokenstore/provider/empty/.configmanager/plugins/empty/* 2>/dev/null)" ]; then exit 0; else exit 1; fi;
       depends_on: empty
+    - pipeline: test:unit
+      depends_on: move:empty:provider
       env:
         ROOT_PKG_NAME: github.com/DevLabFoundry
 
@@ -177,6 +180,12 @@ tasks:
         head -20 .coverage/out
         echo "Coverage file line count:"
         wc -l .coverage/out
+
+  move:empty:provider:
+    command:
+      - |
+        mkdir -p ./tokenstore/provider/empty/.configmanager/plugins/empty
+        cp -r ./tokenstore/provider/empty/bin/* ./tokenstore/provider/empty/.configmanager/plugins/empty/
 
   tag:
     description: |
