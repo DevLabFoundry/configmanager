@@ -68,3 +68,29 @@ func (p *Plugin) GetValue(token *config.ParsedTokenConfig) (string, error) {
 	}
 	return result, nil
 }
+
+type PluginDownloadInfo struct {
+	BaseUrl string
+	Name    string
+}
+
+const corePluginBaseUrl = "https://github.com/DevLabFoundry/configmanager/releases"
+
+type PluginDownloadInfoMap map[string]*PluginDownloadInfo
+
+// corePluginMap are the configmanager maintained plugins
+var corePluginMap PluginDownloadInfoMap = map[string]*PluginDownloadInfo{
+	"empty": {
+		BaseUrl: corePluginBaseUrl,
+		Name:    "",
+	},
+	"awsparamstr": {
+		BaseUrl: corePluginBaseUrl,
+		Name:    "",
+	},
+	"awssecrets": {
+		BaseUrl: corePluginBaseUrl,
+		Name:    "",
+	},
+	// ...
+}

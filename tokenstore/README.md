@@ -2,34 +2,47 @@
 
 The plugin architecture for configmanager is built using the [go-plugin](https://github.com/hashicorp/go-plugin?tab=readme-ov-file#go-plugin-system-over-rpc) from hashicorp. 
 
-
 The existing implementations are converted into plugins using the gRPC model and are built using
 gRPC [go-plugin](https://github.com/hashicorp/go-plugin?tab=readme-ov-file#go-plugin-system-over-rpc) and generated/updated with the [buf cli](https://buf.build/docs/cli/).
 
+You can run the generator with the below task in eirctl
+
+`eirctl run pipeline proto:build`
 
 ## Plugin Architecture
 
+
+### Diagram
 <!-- TODO: add diagram -->
 ```mermaid
 ```
 
+### Local dependencies 
+
 The plugins will need to be downloaded into any one of these locations on disk, they will be checked in this order
 
-- currentDirectory (directory from which the configmanager executable is run)
-- users home directory
+- IF PRESENT IT WILL TAKE PRECEDENCE -> `$CONFIGMANAGER_DIR` environment variable that points to the root of configmanager managed/used local dir/files
+	- e.g. given a path to an AWSPARAMSTR implementation under this path `/my/path/.configmanager/plugins/awsparamstr/awsparamstr-linux-amd64` 
+	the corresponding value would be `CONFIGMANAGER_DIR=/my/path` - the application will create the `.configmanager/plugins/$PLUGIN_PREFIX_LOWERCASE/...`
+- Curren tDirectory (directory from which the configmanager executable is run)
+- Current Users Home directory
 
 The plugin is expected to be found under this path in the above locations 
 > `.configmanager/plugins/$PLUGIN_PREFIX_LOWERCASE/$PLUGIN_PREFIX_LOWERCASE-$GOOS-$GOARCH` 
 
 e.g. in case of the AWS Parameter Store plugin `.configmanager/plugins/awsparamstr/awsparamstr-linux-amd64`
 
+> NB: `CONFIGMANAGER_DIR` is a global variable to the application and may have other uses in the future beyond the `plugins` directory
 
+### API Flow
+
+The existing Go-API flows can stil be used in the same way, however, you will need to pre-download the provider plugins you plan on using as part of your flow. 
+
+> When using something like an AWS Lambda environment, one can leverage AWS Lambda layers to achieve the above folder structure.
 
 ## Alternate architecture explored
 
 As part of the decision on which pluging architecture to use we also explored an alternate architecture using WASIP1.
-
-
 
 ```go
 import (
@@ -238,3 +251,7 @@ func main() {}
 build using the `-buildmode=c-shared` which will convert the module to a reactor module
 
 `GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o awsparams.wasm`
+
+> the outcome of an approach to this was fundamentally flawed in that any WASM code is heavily sandboxed and performing any kind of network calls is impossible in the OOTB set up and only slightly possible by using alternate WASM runtimes or add-ons
+
+> Good fun to explore though :smiley:

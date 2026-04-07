@@ -23,6 +23,7 @@ var ErrProvidersNotFound = errors.New("providers not initialised")
 type storeIface interface {
 	GetValue(implemenation *config.ParsedTokenConfig) (string, error)
 	Init(ctx context.Context, implt []string) error
+	PluginCleanUp()
 }
 
 // Generator is the main struct holding the
@@ -95,6 +96,8 @@ func (c *Generator) Config() *config.GenVarsConfig {
 	return &c.config
 }
 
+func (c *Generator) InitPlugins()
+
 // Generate generates a k/v map of the tokens with their corresponding secret/paramstore values
 // the standard pattern of a token should follow a path like string
 //
@@ -112,7 +115,7 @@ func (c *Generator) Generate(tokens []string) (ReplacedToken, error) {
 	if err := c.store.Init(c.ctx, ntm.TokenSet()); err != nil {
 		return nil, fmt.Errorf("%w, %v", ErrProvidersNotFound, err)
 	}
-
+	defer c.store.PluginCleanUp()
 	// pass in default initialised retrieveStrategy
 	// input should be
 	rt, err := c.generate(ntm)

@@ -28,6 +28,8 @@ func (m mockStore) Init(ctx context.Context, implt []string) error {
 	return nil
 }
 
+func (m mockStore) PluginCleanUp() {}
+
 func Test_Generate(t *testing.T) {
 
 	t.Run("succeeds", func(t *testing.T) {

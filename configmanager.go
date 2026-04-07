@@ -15,10 +15,6 @@ import (
 	"github.com/a8m/envsubst"
 )
 
-const (
-	TERMINATING_CHAR string = `[^\'\"\s\n\\\,]` // :\@\?\/
-)
-
 // generateAPI
 type generateAPI interface {
 	Generate(tokens []string) (generator.ReplacedToken, error)
