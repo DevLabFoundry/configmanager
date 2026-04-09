@@ -38,6 +38,11 @@ func main() {
 		Plugins: map[string]plugin.Plugin{
 			"configmanager_token_store": &tokenstore.GRPCPlugin{Impl: ts},
 		},
+		VersionedPlugins: map[int]plugin.PluginSet{
+			1: {
+				"configmanager_token_store": &tokenstore.GRPCPlugin{Impl: ts},
+			},
+		},
 		// A non-nil value here enables gRPC serving for this plugin...
 		GRPCServer: plugin.DefaultGRPCServer,
 	})

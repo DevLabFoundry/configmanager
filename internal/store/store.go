@@ -226,7 +226,7 @@ func (s *Store) downloadPlugin(pluginFullPath, plugin string) (string, error) {
 
 	bar := progressbar.DefaultBytes(
 		resp.ContentLength,
-		"downloading", releaseName,
+		fmt.Sprintf("downloading: %s", releaseName),
 	)
 
 	if _, err = io.Copy(io.MultiWriter(w, bar), resp.Body); err != nil {

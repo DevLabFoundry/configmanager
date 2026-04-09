@@ -96,7 +96,16 @@ func (c *Generator) Config() *config.GenVarsConfig {
 	return &c.config
 }
 
-func (c *Generator) InitPlugins()
+func (c *Generator) InitPlugins(tokenset []string) error {
+	// initialise pugins here based on discovered tokens
+	//
+	// this can only be done once the tokens are known
+	if err := c.store.Init(c.ctx, tokenset); err != nil {
+		return fmt.Errorf("%w, %v", ErrProvidersNotFound, err)
+	}
+	defer c.store.PluginCleanUp()
+	return nil
+}
 
 // Generate generates a k/v map of the tokens with their corresponding secret/paramstore values
 // the standard pattern of a token should follow a path like string

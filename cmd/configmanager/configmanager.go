@@ -58,6 +58,7 @@ func addSubCmds(rootCmd *Root) {
 	newFromStrCmd(rootCmd)
 	newRetrieveCmd(rootCmd)
 	newInsertCmd(rootCmd)
+	newInitCmd(rootCmd)
 }
 
 func (rc *Root) Execute(ctx context.Context) error {
