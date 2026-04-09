@@ -14,7 +14,7 @@ var Handshake = plugin.HandshakeConfig{
 	// This isn't required when using VersionedPlugins
 	ProtocolVersion:  1,
 	MagicCookieKey:   "CONFIGMANAGER_PLUGIN",
-	MagicCookieValue: "hello",
+	MagicCookieValue: "configmanager-plugin-hello",
 }
 
 // // PluginMap is the map of plugins we can dispense.
