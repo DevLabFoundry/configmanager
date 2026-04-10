@@ -13,6 +13,8 @@ const (
 	//
 	// If it is empty or unset the default locations for these is `$PWD/.configmanager` and then `~/.configmanager`
 	CONFIGMANAGER_DIR string = "CONFIGMANAGER_DIR"
+
+	CONFIGMANAGER_LOG string = "CONFIGMANAGER_LOG"
 )
 
 const (
