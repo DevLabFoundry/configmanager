@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/spyzhov/ajson"
 )
 
@@ -43,25 +43,27 @@ func (rtm *RawTokenConfig) RawTokenMap() map[string]*config.ParsedTokenConfig {
 	return rtm.tokenMap
 }
 
-// type tokenMapSafe struct {
-// 	mu       *sync.Mutex
-// 	tokenMap ReplacedToken
-// }
+type TokenResponse struct {
+	val string
+	key *config.ParsedTokenConfig
+	Err error
+}
 
-// func (tms *tokenMapSafe) getTokenMap() ReplacedToken {
-// 	tms.mu.Lock()
-// 	defer tms.mu.Unlock()
-// 	return tms.tokenMap
-// }
+func (tr *TokenResponse) WithKey(key *config.ParsedTokenConfig) {
+	tr.key = key
+}
 
-// func (tms *tokenMapSafe) addKeyVal(key *config.ParsedTokenConfig, val string) {
-// 	tms.mu.Lock()
-// 	defer tms.mu.Unlock()
-// 	// NOTE: still use the metadata in the key
-// 	// there could be different versions / labels for the same token and hence different values
-// 	// However the JSONpath look up
-// 	tms.tokenMap[key.String()] = keySeparatorLookup(key, val)
-// }
+func (tr *TokenResponse) WithValue(val string) {
+	tr.val = val
+}
+
+func (tr *TokenResponse) Key() *config.ParsedTokenConfig {
+	return tr.key
+}
+
+func (tr *TokenResponse) Value() string {
+	return tr.val
+}
 
 // keySeparatorLookup checks if the key contains
 // keySeparator character

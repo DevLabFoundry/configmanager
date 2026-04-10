@@ -6,9 +6,9 @@ import (
 	"io"
 
 	"github.com/DevLabFoundry/configmanager/v3"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/generator"
 	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/spf13/cobra"
 )
@@ -58,6 +58,7 @@ func addSubCmds(rootCmd *Root) {
 	newFromStrCmd(rootCmd)
 	newRetrieveCmd(rootCmd)
 	newInsertCmd(rootCmd)
+	newInitCmd(rootCmd)
 }
 
 func (rc *Root) Execute(ctx context.Context) error {
@@ -73,7 +74,7 @@ func cmdutilsInit(rootCmd *Root, cmd *cobra.Command, path string) (*cmdutils.Cmd
 
 	cm := configmanager.New(cmd.Context())
 	cm.Config.WithTokenSeparator(rootCmd.rootFlags.tokenSeparator).WithOutputPath(path).WithKeySeparator(rootCmd.rootFlags.keySeparator).WithEnvSubst(rootCmd.rootFlags.enableEnvSubst)
-	gnrtr := generator.NewGenerator(cmd.Context(), func(gv *generator.GenVars) {
+	gnrtr := generator.New(cmd.Context(), func(gv *generator.Generator) {
 		if rootCmd.rootFlags.verbose {
 			rootCmd.logger.SetLevel(log.DebugLvl)
 		}

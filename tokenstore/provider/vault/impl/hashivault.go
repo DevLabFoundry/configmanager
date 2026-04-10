@@ -1,4 +1,4 @@
-package store
+package impl
 
 import (
 	"context"
@@ -8,9 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
-	"github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/config"
+	"github.com/DevLabFoundry/configmanager/v3/tokenstore"
 
+	"github.com/hashicorp/go-hclog"
 	vault "github.com/hashicorp/vault/api"
 	auth "github.com/hashicorp/vault/api/auth/aws"
 )
@@ -29,7 +30,7 @@ type hashiVaultApi interface {
 type VaultStore struct {
 	svc           hashiVaultApi
 	ctx           context.Context
-	logger        log.ILogger
+	logger        hclog.Logger
 	config        *VaultConfig
 	token         *config.ParsedTokenConfig
 	strippedToken string
@@ -41,7 +42,7 @@ type VaultConfig struct {
 	Role    string `json:"iam_role"`
 }
 
-func NewVaultStore(ctx context.Context, token *config.ParsedTokenConfig, logger log.ILogger) (*VaultStore, error) {
+func NewVaultStore(ctx context.Context, token *config.ParsedTokenConfig, logger hclog.Logger) (*VaultStore, error) {
 	storeConf := &VaultConfig{}
 	_ = token.ParseMetadata(storeConf)
 	imp := &VaultStore{
@@ -56,7 +57,7 @@ func NewVaultStore(ctx context.Context, token *config.ParsedTokenConfig, logger 
 	imp.strippedToken = vt.Token
 	client, err := vault.NewClient(config)
 	if err != nil {
-		return nil, fmt.Errorf("%v\n%w", err, ErrClientInitialization)
+		return nil, fmt.Errorf("%v\n%w", err, tokenstore.ErrClientInitialization)
 	}
 
 	if strings.HasPrefix(os.Getenv("VAULT_TOKEN"), "aws_iam") {
@@ -84,13 +85,13 @@ func newVaultStoreWithAWSAuthIAM(client *vault.Client, role string) (*vault.Clie
 		auth.WithRole(role),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to initialize AWS auth method: %s. %w", err, ErrClientInitialization)
+		return nil, fmt.Errorf("unable to initialize AWS auth method: %s. %w", err, tokenstore.ErrClientInitialization)
 	}
 
 	authInfo, err := client.Auth().Login(context.Background(), awsAuth)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to login to AWS auth method: %s. %w", err, ErrClientInitialization)
+		return nil, fmt.Errorf("unable to login to AWS auth method: %s. %w", err, tokenstore.ErrClientInitialization)
 	}
 	if authInfo == nil {
 		return nil, fmt.Errorf("no auth info was returned after login")
@@ -120,7 +121,7 @@ func (imp *VaultStore) Value() (string, error) {
 
 	secret, err := imp.getSecret(ctx, imp.strippedToken, imp.config.Version)
 	if err != nil {
-		imp.logger.Error(implementationNetworkErr, imp.token.Prefix(), err, imp.token.String())
+		imp.logger.Error(tokenstore.ImplementationNetworkErr, imp.token.Prefix(), err, imp.token.String())
 		return "", err
 	}
 

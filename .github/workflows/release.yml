@@ -2,12 +2,13 @@ name: release
 
 on:
   workflow_run:
-    workflows: ['CI']
+    workflows: ["CI"]
     types:
       - completed
     branches:
       - master
       - main
+      - v3
 
 permissions:
   contents: write
@@ -34,10 +35,13 @@ jobs:
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v4.1.0
         with:
-          versionSpec: '6.x'
+          versionSpec: "6.x"
       - name: Set SemVer Version
         uses: gittools/actions/gitversion/execute@v4.1.0
         id: gitversion
+        with:
+          overrideConfig: |
+            next-version=3.0.0
 
   release:
     name: Release
@@ -52,9 +56,6 @@ jobs:
 
       - name: Install Eirctl
         uses: ensono/actions/eirctl-setup@v0.3.1
-        with: 
-          version: 0.7.6
-          isPrerelease: false
 
       - name: build binary
         run: |

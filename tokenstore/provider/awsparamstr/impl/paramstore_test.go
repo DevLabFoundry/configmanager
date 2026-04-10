@@ -1,18 +1,21 @@
-package store_test
+package impl_test
 
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
-	"github.com/DevLabFoundry/configmanager/v3/internal/log"
-	"github.com/DevLabFoundry/configmanager/v3/internal/store"
-	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
+	"github.com/DevLabFoundry/configmanager-plugin/awsparamstr/impl"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
+	"github.com/hashicorp/go-hclog"
+)
+
+const (
+	TestPhrase            string = "got: %v want: %v\n"
+	TestPhraseWithContext string = "%s\n got: %v\n\n want: %v\n"
 )
 
 type mockParamApi func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error)
@@ -52,7 +55,7 @@ func Test_GetParamStore(t *testing.T) {
 		"successVal": {
 			func() *config.ParsedTokenConfig {
 				// "VAULT://secret___/demo/configmanager"
-				tkn, _ := config.NewToken(config.ParamStorePrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.ParamStorePrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("/token/1")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -71,7 +74,7 @@ func Test_GetParamStore(t *testing.T) {
 		"successVal with keyseparator": {
 			func() *config.ParsedTokenConfig {
 				// "AWSPARAMSTR#/token/1|somekey",
-				tkn, _ := config.NewToken(config.ParamStorePrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.ParamStorePrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("/token/1")
 				tkn.WithKeyPath("somekey")
 				tkn.WithMetadata("")
@@ -95,7 +98,7 @@ func Test_GetParamStore(t *testing.T) {
 		"errored": {
 			func() *config.ParsedTokenConfig {
 				// "AWSPARAMSTR#/token/1",
-				tkn, _ := config.NewToken(config.ParamStorePrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.ParamStorePrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("/token/1")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -112,7 +115,7 @@ func Test_GetParamStore(t *testing.T) {
 		"nil to empty": {
 			func() *config.ParsedTokenConfig {
 				// "AWSPARAMSTR#/token/1",
-				tkn, _ := config.NewToken(config.ParamStorePrefix, *config.NewConfig())
+				tkn, _ := config.NewParsedToken(config.ParamStorePrefix, *config.NewConfig())
 				tkn.WithSanitizedToken("/token/1")
 				tkn.WithKeyPath("")
 				tkn.WithMetadata("")
@@ -131,21 +134,21 @@ func Test_GetParamStore(t *testing.T) {
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			impl, err := store.NewParamStore(context.TODO(), log.New(io.Discard))
+			impl, err := impl.NewParamStore(context.TODO(), hclog.NewNullLogger())
 			if err != nil {
-				t.Errorf(testutils.TestPhrase, err.Error(), nil)
+				t.Errorf(TestPhrase, err.Error(), nil)
 			}
 			impl.WithSvc(tt.mockClient(t))
-			impl.SetToken(tt.token())
-			got, err := impl.Value()
+
+			got, err := impl.Value(tt.token().StoreToken(), []byte{})
 			if err != nil {
 				if err.Error() != tt.expect {
-					t.Errorf(testutils.TestPhrase, err.Error(), tt.expect)
+					t.Errorf(TestPhrase, err.Error(), tt.expect)
 				}
 				return
 			}
 			if got != tt.expect {
-				t.Errorf(testutils.TestPhrase, got, tt.expect)
+				t.Errorf(TestPhrase, got, tt.expect)
 			}
 		})
 	}

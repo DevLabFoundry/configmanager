@@ -17,4 +17,10 @@ FROM docker.io/alpine:3
 
 COPY --from=builder /app/bin/configmanager /usr/bin/configmanager
 
+RUN chmod +x /usr/bin/configmanager
+
+RUN adduser -D -s /bin/sh -h /home/configmanager configmanager
+
+USER configmanager
+
 ENTRYPOINT ["configmanager"]

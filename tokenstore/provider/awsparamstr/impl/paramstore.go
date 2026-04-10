@@ -1,13 +1,14 @@
-package store
+package impl
 
 import (
 	"context"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
-	"github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/config"
+	"github.com/DevLabFoundry/configmanager/v3/tokenstore"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConf "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/hashicorp/go-hclog"
 )
 
 type paramStoreApi interface {
@@ -17,19 +18,18 @@ type paramStoreApi interface {
 type ParamStore struct {
 	svc    paramStoreApi
 	ctx    context.Context
-	logger log.ILogger
 	config *ParamStrConfig
 	token  *config.ParsedTokenConfig
+	logger hclog.Logger
 }
 
 type ParamStrConfig struct {
 	// reserved for potential future use
 }
 
-func NewParamStore(ctx context.Context, logger log.ILogger) (*ParamStore, error) {
+func NewParamStore(ctx context.Context, logger hclog.Logger) (*ParamStore, error) {
 	cfg, err := awsConf.LoadDefaultConfig(ctx)
 	if err != nil {
-		logger.Error("unable to load SDK config, %v\n%w", err, ErrClientInitialization)
 		return nil, err
 	}
 	c := ssm.NewFromConfig(cfg)
@@ -45,19 +45,12 @@ func (s *ParamStore) WithSvc(svc paramStoreApi) {
 	s.svc = svc
 }
 
-func (imp *ParamStore) SetToken(token *config.ParsedTokenConfig) {
-	storeConf := &ParamStrConfig{}
-	_ = token.ParseMetadata(storeConf)
-	imp.token = token
-	imp.config = storeConf
-}
-
-func (imp *ParamStore) Value() (string, error) {
-	imp.logger.Info("%s", "Concrete implementation ParameterStore")
-	imp.logger.Info("ParamStore Token: %s", imp.token.String())
+func (imp *ParamStore) Value(token string, metadata []byte) (string, error) {
+	imp.logger.Info("Concrete implementation ParameterStore")
+	imp.logger.Info("ParamStore Token: %s", token)
 
 	input := &ssm.GetParameterInput{
-		Name:           aws.String(imp.token.StoreToken()),
+		Name:           aws.String(token),
 		WithDecryption: aws.Bool(true),
 	}
 	ctx, cancel := context.WithCancel(imp.ctx)
@@ -65,7 +58,7 @@ func (imp *ParamStore) Value() (string, error) {
 
 	result, err := imp.svc.GetParameter(ctx, input)
 	if err != nil {
-		imp.logger.Error(implementationNetworkErr, config.ParamStorePrefix, err, imp.token.StoreToken())
+		imp.logger.Error(tokenstore.ImplementationNetworkErr, "config.ParamStorePrefix", err, token)
 		return "", err
 	}
 

@@ -1,10 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches: [master, main]
   pull_request:
-    branches: [master, main]
+    branches: [master, main, v3]
 
 permissions:
   contents: write
@@ -37,6 +35,9 @@ jobs:
       - name: Set SemVer Version
         uses: gittools/actions/gitversion/execute@v4.1.0
         id: gitversion
+        with:
+          overrideConfig: |
+            next-version=3.0.0
 
       - name: echo VERSIONS
         run: |
@@ -58,9 +59,6 @@ jobs:
 
       - name: Install Eirctl
         uses: ensono/actions/eirctl-setup@v0.3.1
-        with:
-          version: 0.9.3
-          isPrerelease: false
 
       - name: Run Lint
         run: |
