@@ -1,8 +1,8 @@
 module github.com/DevLabFoundry/configmanager/v2
 
-go 1.25.0
+go 1.26
 
-toolchain go1.25.8
+toolchain go1.26.1
 
 require (
 	cloud.google.com/go/secretmanager v1.19.0
