@@ -2,7 +2,7 @@ module github.com/DevLabFoundry/configmanager/v3
 
 go 1.26
 
-toolchain go1.26.1
+toolchain go1.26.3
 
 require (
 	github.com/go-test/deep v1.1.1
