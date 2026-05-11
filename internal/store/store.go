@@ -179,14 +179,14 @@ func (s *Store) findPlugin(pluginDir, plugin string) (string, error) {
 func (s *Store) downloadPlugin(pluginFullPath, plugin string) (string, error) {
 
 	releaseName := filepath.Base(pluginFullPath)
-	// This is opinionated and all windows plugins must be stored with the `.exe` extension
+	// This is opinionated and all windows plugins *must* be stored with the `.exe` extension
 	if runtime.GOOS == "windows" {
 		releaseName = releaseName + ".exe"
 		pluginFullPath = pluginFullPath + ".exe"
 	}
 
 	// as an example
-	// https://github.com/DevLabFoundry/configmanager/releases/download/v3.0.0/awsparamstr-linux-amd64
+	// https://github.com/DevLabFoundry/configmanager-plugin-awsparamstr/releases/download/v3.0.0/awsparamstr-linux-amd64
 	if err := s.osOps.MkdirAll(filepath.Dir(pluginFullPath), 0777); err != nil {
 		return "", fmt.Errorf("%w, %v", ErrMkdirAllFail, err)
 	}
@@ -197,15 +197,20 @@ func (s *Store) downloadPlugin(pluginFullPath, plugin string) (string, error) {
 	}
 	defer w.Close()
 
-	specific := "download/%s"
-	// latest := "latest/download"
-	// TODO: need to think about providing these in a more configurable way
-	//
-	releasePath := path.Join(fmt.Sprintf(specific, "v3.0.0"), releaseName)
-
 	pluginInfo, found := s.downloadInfoMap[plugin]
 	if !found {
-		return "", fmt.Errorf("download info not found for plugin ( %s )", plugin)
+		return "", fmt.Errorf("%w, download info not found for plugin ( %s )", ErrPluginIssue, plugin)
+	}
+
+	// Current set up only supports github.com releases
+	// You must include the `v` in the `v0.12.34`
+	latest := "latest/download"
+	specific := "download/%s"
+
+	releasePath := path.Join(latest, releaseName)
+	if len(pluginInfo.Version) > 0 {
+		// TODO: need to think about providing these in a more configurable way
+		releasePath = path.Join(fmt.Sprintf(specific, fmt.Sprintf("v%s", pluginInfo.Version)), releaseName)
 	}
 
 	link, err := url.Parse(fmt.Sprintf("%s/%s", pluginInfo.BaseUrl, releasePath))

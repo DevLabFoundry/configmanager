@@ -1,2 +1,0 @@
-# Hashicorp Vault
-

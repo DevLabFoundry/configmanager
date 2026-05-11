@@ -72,6 +72,7 @@ func (p *Plugin) GetValue(token *config.ParsedTokenConfig) (string, error) {
 type PluginDownloadInfo struct {
 	BaseUrl string
 	Name    string
+	Version string
 }
 
 const corePluginBaseUrl = "https://github.com/DevLabFoundry/configmanager/releases"
@@ -89,6 +90,10 @@ var corePluginMap PluginDownloadInfoMap = map[string]*PluginDownloadInfo{
 		Name:    "",
 	},
 	"awssecrets": {
+		BaseUrl: corePluginBaseUrl,
+		Name:    "",
+	},
+	"azappconf": {
 		BaseUrl: corePluginBaseUrl,
 		Name:    "",
 	},
