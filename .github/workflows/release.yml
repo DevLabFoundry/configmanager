@@ -2,7 +2,7 @@ name: release
 
 on:
   workflow_run:
-    workflows: ['CI']
+    workflows: ["CI"]
     types:
       - completed
     branches:
@@ -33,7 +33,7 @@ jobs:
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v3.0.0
         with:
-          versionSpec: '5.x'
+          versionSpec: "5.x"
       - name: Set SemVer Version
         uses: gittools/actions/gitversion/execute@v3.0.0
         id: gitversion
@@ -50,7 +50,7 @@ jobs:
 
       - name: Install Eirctl
         uses: ensono/actions/eirctl-setup@v0.3.1
-        with: 
+        with:
           version: 0.7.6
           isPrerelease: false
 
@@ -66,7 +66,7 @@ jobs:
           generate_release_notes: true
           token: ${{ secrets.GITHUB_TOKEN }}
           files: ./dist/*
-          prerelease: false
+          prerelease: true
 
       - name: release library
         run: |

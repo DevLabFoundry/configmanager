@@ -16,3 +16,6 @@ dist
 
 # local testers and 
 local/
+
+.configmanager
+.trivy
