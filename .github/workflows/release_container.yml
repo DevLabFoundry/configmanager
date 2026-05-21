@@ -5,12 +5,12 @@ on:
     workflows: ['Lint and Test']
     types:
       - completed
-    branches: 
+    branches:
       - main
 
 permissions:
   contents: write
-  packages: write 
+  packages: write
 
 jobs:
   set-version-tag:
@@ -33,7 +33,7 @@ jobs:
         id: gitversion
 
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: set-version-tag
     env:
       SEMVER: ${{ needs.set-version-tag.outputs.semVer }}
