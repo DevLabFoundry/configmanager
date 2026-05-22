@@ -48,7 +48,8 @@ func (c *CmdUtils) generateFromToken(tokens []string) error {
 	pm, err := c.configManager.Retrieve(tokens)
 	if err != nil {
 		// return full error to terminal if no tokens were parsed
-		if len(pm) < 1 {
+		// or if strict mode is enabled
+		if len(pm) < 1 || c.configManager.GeneratorConfig().Strict() {
 			return err
 		}
 		c.logger.Error("%v", err)

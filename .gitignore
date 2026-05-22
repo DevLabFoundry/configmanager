@@ -16,3 +16,8 @@ dist
 
 # local testers and 
 local/
+
+# Eirctl
+eirctl.env
+.eirctl/*
+!.eirctl/.gitkeep

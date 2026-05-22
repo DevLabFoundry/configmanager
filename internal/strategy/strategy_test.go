@@ -232,7 +232,7 @@ func Test_SelectImpl_With(t *testing.T) {
 		},
 		"success GCPSECRETS": {
 			func() func() {
-				cf, _ := os.CreateTemp(".", "*")
+				cf, _ := os.CreateTemp(os.TempDir(), "gcp-creds*")
 				cf.Write(TEST_GCP_CREDS)
 				os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", cf.Name())
 				return func() {

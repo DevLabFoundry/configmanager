@@ -546,3 +546,62 @@ func Test_IsParsed(t *testing.T) {
 // 		})
 // 	}
 // }
+
+func Test_Generate_StrictMode(t *testing.T) {
+	t.Run("strict mode returns error on provider failure", func(t *testing.T) {
+		var custFunc = func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			m := &mockGenerate{"UNKNOWN://mountPath/token", "", fmt.Errorf("provider unavailable")}
+			return m, nil
+		}
+
+		conf := config.NewConfig()
+		conf.WithStrict(true)
+		g := generator.NewGenerator(context.TODO(), func(gv *generator.GenVars) {
+			gv.Logger = log.New(&bytes.Buffer{})
+		})
+		g.WithConfig(conf)
+		g.WithStrategyMap(strategy.StrategyFuncMap{config.UnknownPrefix: custFunc})
+		_, err := g.Generate([]string{"UNKNOWN://mountPath/token"})
+
+		if err == nil {
+			t.Fatal("expected error in strict mode but got nil")
+		}
+	})
+
+	t.Run("strict mode returns error on missing JSON key", func(t *testing.T) {
+		var custFunc = func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			m := &mockGenerate{"token", `{"foo":"bar"}`, nil}
+			return m, nil
+		}
+
+		conf := config.NewConfig()
+		conf.WithStrict(true)
+		g := generator.NewGenerator(context.TODO(), func(gv *generator.GenVars) {
+			gv.Logger = log.New(&bytes.Buffer{})
+		})
+		g.WithConfig(conf)
+		g.WithStrategyMap(strategy.StrategyFuncMap{config.UnknownPrefix: custFunc})
+		_, err := g.Generate([]string{"UNKNOWN://mountPath/token|nonexistent"})
+
+		if err == nil {
+			t.Fatal("expected error in strict mode for missing JSON key but got nil")
+		}
+	})
+
+	t.Run("non-strict mode does not return error on provider failure", func(t *testing.T) {
+		var custFunc = func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+			m := &mockGenerate{"UNKNOWN://mountPath/token", "", fmt.Errorf("provider unavailable")}
+			return m, nil
+		}
+
+		g := generator.NewGenerator(context.TODO(), func(gv *generator.GenVars) {
+			gv.Logger = log.New(&bytes.Buffer{})
+		})
+		g.WithStrategyMap(strategy.StrategyFuncMap{config.UnknownPrefix: custFunc})
+		_, err := g.Generate([]string{"UNKNOWN://mountPath/token"})
+
+		if err != nil {
+			t.Fatalf("expected no error in non-strict mode but got: %v", err)
+		}
+	})
+}

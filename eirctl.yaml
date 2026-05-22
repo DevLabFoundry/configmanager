@@ -11,9 +11,18 @@ contexts:
     container:
       name: mirror.gcr.io/bash:5.0.18-alpine3.22
 
+  committed:
+    container:
+      name: alpine:3
+      shell: /bin/sh
+      shell_args: ["-c"]
+
 pipelines:
+  commit-lint:
+    - task: lint:commits
+
   gha:unit:test:
-    - pipeline: test:unit 
+    - pipeline: test:unit
       env:
         ROOT_PKG_NAME: github.com/DevLabFoundry
     - task: sonar:coverage:prep
@@ -30,6 +39,26 @@ pipelines:
       depends_on: clean
 
 tasks:
+  lint:commits:
+    context: committed
+    description: Lint commit messages against Conventional Commits using committed
+    command:
+      - |
+        apk add --no-cache git
+        git config --global safe.directory '*'
+        if [ ! -f /eirctl/.eirctl/committed ]; then
+          echo "Downloading committed binary..."
+          wget -qO- https://github.com/crate-ci/committed/releases/download/v1.1.11/committed-v1.1.11-x86_64-unknown-linux-musl.tar.gz \
+            | tar xz -C /tmp
+          install -m 755 /tmp/committed /eirctl/.eirctl/committed
+        fi
+        if [ -n "$GITHUB_BASE_REF" ]; then
+          RANGE="HEAD^1..HEAD^2"
+        else
+          RANGE="origin/main..HEAD"
+        fi
+        /eirctl/.eirctl/committed $RANGE --no-merge-commit
+
   show:coverage:
     description: Opens the current coverage viewer for the the configmanager utility.
     command: go tool cover -html=.coverage/out
@@ -39,7 +68,6 @@ tasks:
       Opens a webview with godoc running
       Already filters the packages to this one and enables
       internal/private package documentation
-    # go install golang.org/x/tools/cmd/godoc@latest
     command: |
       open http://localhost:6060/pkg/github.com/DevLabFoundry/configmanager/v2/?m=all
       godoc -notes "BUG|TODO" -play -http=:6060
@@ -90,7 +118,7 @@ tasks:
   sonar:coverage:prep:
     context: bash
     command:
-      - | 
+      - |
         sed -i 's|github.com/DevLabFoundry/configmanager/v2/||g' .coverage/out
         echo "Coverage file first 20 lines after conversion:"
         head -20 .coverage/out

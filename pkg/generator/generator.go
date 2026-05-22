@@ -3,9 +3,11 @@ package generator
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/config"
@@ -114,13 +116,15 @@ func (tms *tokenMapSafe) getTokenMap() ParsedMap {
 	return tms.tokenMap
 }
 
-func (tms *tokenMapSafe) addKeyVal(key *config.ParsedTokenConfig, val string) {
+func (tms *tokenMapSafe) addKeyVal(key *config.ParsedTokenConfig, val string) error {
 	tms.mu.Lock()
 	defer tms.mu.Unlock()
 	// NOTE: still use the metadata in the key
 	// there could be different versions / labels for the same token and hence different values
 	// However the JSONpath look up
-	tms.tokenMap[key.String()] = keySeparatorLookup(key, val)
+	v, err := keySeparatorLookup(key, val)
+	tms.tokenMap[key.String()] = v
+	return err
 }
 
 type rawTokenMap struct {
@@ -199,17 +203,15 @@ func (c *GenVars) generate(rawMap *rawTokenMap) error {
 
 	// Fan-in: receive results with pure select
 	received := 0
+	var errs []error
 	for received < tokenCount {
 		select {
 		case cr := <-outCh:
 			if cr == nil {
 				continue // defensive (shouldn't happen)
 			}
-			c.Logger.Debug("cro: %+v", cr)
-			if cr.Err != nil {
-				c.Logger.Debug("cr.err %v, for token: %s", cr.Err, cr.Key())
-			} else {
-				c.rawMap.addKeyVal(cr.Key(), cr.Value())
+			if err := c.handleTokenResponse(cr); err != nil {
+				errs = append(errs, err)
 			}
 			received++
 		case <-c.ctx.Done():
@@ -217,7 +219,42 @@ func (c *GenVars) generate(rawMap *rawTokenMap) error {
 			return c.ctx.Err() // propagate context error (cancel/timeout)
 		}
 	}
+	if c.config.Strict() && len(errs) > 0 {
+		return fmt.Errorf("%d token(s) failed:\n  %s", len(errs), joinErrors(errs))
+	}
 	return nil
+}
+
+func (c *GenVars) handleTokenResponse(cr *strategy.TokenResponse) error {
+	c.Logger.Debug("cro: %+v", cr)
+	if cr.Err != nil {
+		c.Logger.Debug("cr.err %v, for token: %s", cr.Err, cr.Key())
+		return fmt.Errorf("%s: %s", cr.Key(), rootCause(cr.Err))
+	}
+	if err := c.rawMap.addKeyVal(cr.Key(), cr.Value()); err != nil {
+		return fmt.Errorf("%s: %s", cr.Key(), err)
+	}
+	return nil
+}
+
+// rootCause unwraps an error chain and returns the innermost error message.
+func rootCause(err error) string {
+	for {
+		inner := errors.Unwrap(err)
+		if inner == nil {
+			return err.Error()
+		}
+		err = inner
+	}
+}
+
+// joinErrors formats errors as an indented list.
+func joinErrors(errs []error) string {
+	msgs := make([]string, len(errs))
+	for i, e := range errs {
+		msgs[i] = e.Error()
+	}
+	return strings.Join(msgs, "\n  ")
 }
 
 // IsParsed will try to parse the return found string into
@@ -233,18 +270,18 @@ func IsParsed(v any, trm ParsedMap) bool {
 // keySeparatorLookup checks if the key contains
 // keySeparator character
 // If it does contain one then it tries to parse
-func keySeparatorLookup(key *config.ParsedTokenConfig, val string) string {
+func keySeparatorLookup(key *config.ParsedTokenConfig, val string) (string, error) {
 	// key has separator
 	k := key.LookupKeys()
 	if k == "" {
 		// c.logger.Info("no keyseparator found")
-		return val
+		return val, nil
 	}
 
 	keys, err := ajson.JSONPath([]byte(val), fmt.Sprintf("$..%s", k))
 	if err != nil {
 		// c.logger.Debug("unable to parse as json object %v", err.Error())
-		return val
+		return val, nil
 	}
 
 	if len(keys) == 1 {
@@ -253,14 +290,13 @@ func keySeparatorLookup(key *config.ParsedTokenConfig, val string) string {
 			str, err := strconv.Unquote(fmt.Sprintf("%v", v))
 			if err != nil {
 				// c.logger.Debug("unable to unquote value: %v returning as is", v)
-				return fmt.Sprintf("%v", v)
+				return fmt.Sprintf("%v", v), nil
 			}
-			return str
+			return str, nil
 		}
 
-		return fmt.Sprintf("%v", v)
+		return fmt.Sprintf("%v", v), nil
 	}
 
-	// c.logger.Info("no value found in json using path expression")
-	return ""
+	return "", fmt.Errorf("key %q not found in JSON value", k)
 }
