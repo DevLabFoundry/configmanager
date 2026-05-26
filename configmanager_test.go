@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/DevLabFoundry/configmanager/v3"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/generator"
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
 	"github.com/go-test/deep"
 	"gopkg.in/yaml.v3"

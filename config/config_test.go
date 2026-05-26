@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
 )
 
@@ -36,7 +36,7 @@ func Test_MarshalMetadata_with_label_struct_succeeds(t *testing.T) {
 	}{
 		"when provider expects label on token and label exists": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
+				tkn, _ := config.NewParsedToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
 				tkn.WithKeyPath("d88")
 				tkn.WithMetadata("label=dev")
 				tkn.WithSanitizedToken("basjh/dskjuds/123")
@@ -47,7 +47,7 @@ func Test_MarshalMetadata_with_label_struct_succeeds(t *testing.T) {
 		},
 		"when provider expects label on token and label does not exist": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
+				tkn, _ := config.NewParsedToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
 				tkn.WithKeyPath("d88")
 				tkn.WithMetadata("someother=dev")
 				tkn.WithSanitizedToken("basjh/dskjuds/123")
@@ -58,7 +58,7 @@ func Test_MarshalMetadata_with_label_struct_succeeds(t *testing.T) {
 		},
 		"no metadata found": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
+				tkn, _ := config.NewParsedToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
 				tkn.WithKeyPath("d88")
 				tkn.WithSanitizedToken("basjh/dskjuds/123")
 				return tkn
@@ -68,7 +68,7 @@ func Test_MarshalMetadata_with_label_struct_succeeds(t *testing.T) {
 		},
 		"no metadata found incorrect marker placement": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
+				tkn, _ := config.NewParsedToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
 				tkn.WithKeyPath("d88]asdas=bar[")
 				tkn.WithSanitizedToken("basjh/dskjuds/123")
 				return tkn
@@ -78,7 +78,7 @@ func Test_MarshalMetadata_with_label_struct_succeeds(t *testing.T) {
 		},
 		"no metadata found incorrect marker placement and no key separator": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
+				tkn, _ := config.NewParsedToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
 				tkn.WithSanitizedToken("basjh/dskjuds/123]asdas=bar[")
 				return tkn
 			},
@@ -87,7 +87,7 @@ func Test_MarshalMetadata_with_label_struct_succeeds(t *testing.T) {
 		},
 		"no start found incorrect marker placement and no key separator": {
 			func() *config.ParsedTokenConfig {
-				tkn, _ := config.NewToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
+				tkn, _ := config.NewParsedToken(config.AzTableStorePrefix, *config.NewConfig().WithTokenSeparator("://"))
 				tkn.WithKeyPath("d88")
 				tkn.WithMetadata("someother=dev")
 				tkn.WithSanitizedToken("basjh/dskjuds/123]asdas=bar]")
@@ -139,7 +139,7 @@ func Test_TokenParser_config(t *testing.T) {
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
 			conf := &mockConfAwsSecrMgr{}
-			got, _ := config.NewToken(tt.expPrefix, *config.NewConfig())
+			got, _ := config.NewParsedToken(tt.expPrefix, *config.NewConfig())
 			got.WithSanitizedToken(tt.rawToken)
 			got.WithKeyPath(tt.keyPath)
 			got.WithMetadata(tt.metadataStr)
@@ -160,24 +160,6 @@ func Test_TokenParser_config(t *testing.T) {
 			}
 			if conf.Version != tt.expMetadataVersion {
 				t.Errorf(testutils.TestPhrase, conf.Version, tt.expMetadataVersion)
-			}
-		})
-	}
-}
-
-func TestLookupIdent(t *testing.T) {
-	ttests := map[string]struct {
-		char   string
-		expect config.TokenType
-	}{
-		"new line": {"\n", config.NEW_LINE},
-		"dash":     {"-", config.TEXT},
-	}
-	for name, tt := range ttests {
-		t.Run(name, func(t *testing.T) {
-			got := config.LookupIdent(tt.char)
-			if got != tt.expect {
-				t.Errorf("got %v wanted %v", got, tt.expect)
 			}
 		})
 	}

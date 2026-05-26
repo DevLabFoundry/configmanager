@@ -3,8 +3,9 @@ package lexer_test
 import (
 	"testing"
 
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/lexer"
+	"github.com/DevLabFoundry/configmanager/v3/internal/token"
 )
 
 func Test_Lexer_NextToken(t *testing.T) {
@@ -13,60 +14,60 @@ foo=AWSPARAMSTR:///path|keyAWSSECRETS:///foo
 META_INCLUDED=VAULT://baz/bar/123|key1.prop2[role=arn:aws:iam::1111111:role,version=1082313]
 `
 	ttests := []struct {
-		expectedType    config.TokenType
+		expectedType    token.TokenType
 		expectedLiteral string
 	}{
-		{config.TEXT, "foo"},
-		{config.SPACE, " "},
-		{config.TEXT, "stuyfsdfsf"},
-		{config.NEW_LINE, "\n"},
-		{config.TEXT, "foo"},
-		{config.EQUALS, "="},
-		{config.BEGIN_CONFIGMANAGER_TOKEN, "AWSPARAMSTR://"},
-		{config.FORWARD_SLASH, "/"},
-		{config.TEXT, "path"},
-		{config.CONFIGMANAGER_TOKEN_KEY_PATH_SEPARATOR, "|"},
-		{config.TEXT, "key"},
-		{config.BEGIN_CONFIGMANAGER_TOKEN, "AWSSECRETS://"},
-		{config.FORWARD_SLASH, "/"},
-		{config.TEXT, "foo"},
-		{config.NEW_LINE, "\n"},
-		{config.TEXT, "MET"},
-		{config.TEXT, "A"},
-		{config.TEXT, "_INCLUDED"},
-		// {config.TEXT, "U"},
-		// {config.TEXT, "DED"},
-		{config.EQUALS, "="},
-		{config.BEGIN_CONFIGMANAGER_TOKEN, "VAULT://"},
-		{config.TEXT, "baz"},
-		{config.FORWARD_SLASH, "/"},
-		{config.TEXT, "bar"},
-		{config.FORWARD_SLASH, "/"},
-		{config.TEXT, "123"},
-		{config.CONFIGMANAGER_TOKEN_KEY_PATH_SEPARATOR, "|"},
-		{config.TEXT, "key1"},
-		{config.DOT, "."},
-		{config.TEXT, "prop2"},
-		{config.BEGIN_META_CONFIGMANAGER_TOKEN, "["},
-		{config.TEXT, "role"},
-		{config.EQUALS, "="},
-		{config.TEXT, "arn"},
-		{config.COLON, ":"},
-		{config.TEXT, "aws"},
-		{config.COLON, ":"},
-		{config.TEXT, "iam"},
-		{config.COLON, ":"},
-		{config.COLON, ":"},
-		{config.TEXT, "1111111"},
-		{config.COLON, ":"},
-		{config.TEXT, "role"},
-		{config.COMMA, ","},
-		{config.TEXT, "version"},
-		{config.EQUALS, "="},
-		{config.TEXT, "1082313"},
-		{config.END_META_CONFIGMANAGER_TOKEN, "]"},
-		{config.NEW_LINE, "\n"},
-		{config.EOF, ""},
+		{token.TEXT, "foo"},
+		{token.SPACE, " "},
+		{token.TEXT, "stuyfsdfsf"},
+		{token.NEW_LINE, "\n"},
+		{token.TEXT, "foo"},
+		{token.EQUALS, "="},
+		{token.BEGIN_CONFIGMANAGER_TOKEN, "AWSPARAMSTR://"},
+		{token.FORWARD_SLASH, "/"},
+		{token.TEXT, "path"},
+		{token.CONFIGMANAGER_TOKEN_KEY_PATH_SEPARATOR, "|"},
+		{token.TEXT, "key"},
+		{token.BEGIN_CONFIGMANAGER_TOKEN, "AWSSECRETS://"},
+		{token.FORWARD_SLASH, "/"},
+		{token.TEXT, "foo"},
+		{token.NEW_LINE, "\n"},
+		{token.TEXT, "MET"},
+		{token.TEXT, "A"},
+		{token.TEXT, "_INCLUDED"},
+		// {token.TEXT, "U"},
+		// {token.TEXT, "DED"},
+		{token.EQUALS, "="},
+		{token.BEGIN_CONFIGMANAGER_TOKEN, "VAULT://"},
+		{token.TEXT, "baz"},
+		{token.FORWARD_SLASH, "/"},
+		{token.TEXT, "bar"},
+		{token.FORWARD_SLASH, "/"},
+		{token.TEXT, "123"},
+		{token.CONFIGMANAGER_TOKEN_KEY_PATH_SEPARATOR, "|"},
+		{token.TEXT, "key1"},
+		{token.DOT, "."},
+		{token.TEXT, "prop2"},
+		{token.BEGIN_META_CONFIGMANAGER_TOKEN, "["},
+		{token.TEXT, "role"},
+		{token.EQUALS, "="},
+		{token.TEXT, "arn"},
+		{token.COLON, ":"},
+		{token.TEXT, "aws"},
+		{token.COLON, ":"},
+		{token.TEXT, "iam"},
+		{token.COLON, ":"},
+		{token.COLON, ":"},
+		{token.TEXT, "1111111"},
+		{token.COLON, ":"},
+		{token.TEXT, "role"},
+		{token.COMMA, ","},
+		{token.TEXT, "version"},
+		{token.EQUALS, "="},
+		{token.TEXT, "1082313"},
+		{token.END_META_CONFIGMANAGER_TOKEN, "]"},
+		{token.NEW_LINE, "\n"},
+		{token.EOF, ""},
 	}
 
 	l := lexer.New(lexer.Source{Input: input, FullPath: "/foo/bar", FileName: "bar"}, *config.NewConfig())
@@ -83,7 +84,7 @@ META_INCLUDED=VAULT://baz/bar/123|key1.prop2[role=arn:aws:iam::1111111:role,vers
 			t.Fatalf("tests[%d] - literal wrong. got=%q, expected=%q",
 				i, tok.Literal, tt.expectedLiteral)
 		}
-		if tok.Type == config.BEGIN_CONFIGMANAGER_TOKEN {
+		if tok.Type == token.BEGIN_CONFIGMANAGER_TOKEN {
 
 		}
 	}
@@ -93,7 +94,7 @@ func Test_empty_file(t *testing.T) {
 	input := ``
 	l := lexer.New(lexer.Source{Input: input, FullPath: "/foo/bar", FileName: "bar"}, *config.NewConfig())
 	tok := l.NextToken()
-	if tok.Type != config.EOF {
+	if tok.Type != token.EOF {
 		t.Fatal("expected EOF")
 	}
 }

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/generator"
 	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 	log "github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
 	"github.com/spf13/cobra"

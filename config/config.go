@@ -9,6 +9,12 @@ import (
 
 const (
 	SELF_NAME = "configmanager"
+	// CONFIGMANAGER_DIR is used for any operations that require a lookup of dependencies/providers
+	//
+	// If it is empty or unset the default locations for these is `$PWD/.configmanager` and then `~/.configmanager`
+	CONFIGMANAGER_DIR string = "CONFIGMANAGER_DIR"
+
+	CONFIGMANAGER_LOG string = "CONFIGMANAGER_LOG"
 )
 
 const (
@@ -41,14 +47,6 @@ const (
 )
 
 var (
-	// default varPrefix used by the replacer function
-	// any token must beging with one of these else
-	// it will be skipped as not a replaceable token
-	VarPrefix = map[ImplementationPrefix]bool{
-		SecretMgrPrefix: true, ParamStorePrefix: true, AzKeyVaultSecretsPrefix: true,
-		GcpSecretsPrefix: true, HashicorpVaultPrefix: true, AzTableStorePrefix: true,
-		AzAppConfigPrefix: true, UnknownPrefix: true,
-	}
 	ErrConfigValidation = errors.New("config validation failed")
 )
 
@@ -58,6 +56,7 @@ type GenVarsConfig struct {
 	tokenSeparator string
 	keySeparator   string
 	enableEnvSubst bool
+	enableLaxMode  bool
 	// parseAdditionalVars func(token string) TokenConfigVars
 }
 
@@ -91,9 +90,15 @@ func (c *GenVarsConfig) WithKeySeparator(keySeparator string) *GenVarsConfig {
 	return c
 }
 
-// WithKeySeparator adds a custom key separotor
+// WithEnvSubst adds env subst flag
 func (c *GenVarsConfig) WithEnvSubst(enabled bool) *GenVarsConfig {
 	c.enableEnvSubst = enabled
+	return c
+}
+
+// WithLaxMode adds lax mode enabled flag
+func (c *GenVarsConfig) WithLaxMode(enabled bool) *GenVarsConfig {
+	c.enableLaxMode = enabled
 	return c
 }
 
@@ -115,6 +120,13 @@ func (c *GenVarsConfig) KeySeparator() string {
 // EnvSubstEnabled returns whether or not envsubst is enabled
 func (c *GenVarsConfig) EnvSubstEnabled() bool {
 	return c.enableEnvSubst
+}
+
+// LaxModeEnabled returns whether or not lax mode is enabled
+//
+// It is disabled by default which will break the existing v2 behaviour
+func (c *GenVarsConfig) LaxModeEnabled() bool {
+	return c.enableLaxMode
 }
 
 // Config returns the derefed value
@@ -144,8 +156,8 @@ type ParsedTokenConfig struct {
 	sanitizedToken string
 }
 
-// NewToken initialises a *ParsedTokenConfig
-func NewToken(prefix ImplementationPrefix, config GenVarsConfig) (*ParsedTokenConfig, error) {
+// NewParsedToken initialises a *ParsedTokenConfig
+func NewParsedToken(prefix ImplementationPrefix, config GenVarsConfig) (*ParsedTokenConfig, error) {
 	tokenConf := &ParsedTokenConfig{}
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -171,21 +183,9 @@ func (ptc *ParsedTokenConfig) WithSanitizedToken(v string) {
 }
 
 func (t *ParsedTokenConfig) ParseMetadata(metadataTyp any) error {
-	// crude json like builder from key/val tags
-	// since we are only ever dealing with a string input
-	// extracted from the token there is little chance panic would occur here
-	// WATCH THIS SPACE "¯\_(ツ)_/¯"
-	metaMap := []string{}
-	for keyVal := range strings.SplitSeq(t.metadataStr, ",") {
-		mapKeyVal := strings.Split(keyVal, "=")
-		if len(mapKeyVal) == 2 {
-			metaMap = append(metaMap, fmt.Sprintf(`"%s":"%s"`, mapKeyVal[0], mapKeyVal[1]))
-		}
-	}
-
 	// empty map will be parsed as `{}` still resulting in a valid json
 	// and successful unmarshalling but default value pointer struct
-	if err := json.Unmarshal(fmt.Appendf(nil, `{%s}`, strings.Join(metaMap, ",")), metadataTyp); err != nil {
+	if err := json.Unmarshal(fmt.Appendf(nil, "%s", t.parseMetadata()), metadataTyp); err != nil {
 		// It would very hard to test this since
 		// we are forcing the key and value to be strings
 		// return non-filled pointer
@@ -242,4 +242,19 @@ func (t *ParsedTokenConfig) Prefix() ImplementationPrefix {
 
 func (t *ParsedTokenConfig) TokenSeparator() string {
 	return t.tokenSeparator
+}
+
+func (t *ParsedTokenConfig) parseMetadata() string {
+	// crude json like builder from key/val tags
+	// since we are only ever dealing with a string input
+	// extracted from the token there is little chance panic would occur here
+	// WATCH THIS SPACE "¯\_(ツ)_/¯"
+	metaMap := []string{}
+	for keyVal := range strings.SplitSeq(t.metadataStr, ",") {
+		mapKeyVal := strings.Split(keyVal, "=")
+		if len(mapKeyVal) == 2 {
+			metaMap = append(metaMap, fmt.Sprintf(`"%s":"%s"`, mapKeyVal[0], mapKeyVal[1]))
+		}
+	}
+	return fmt.Sprintf(`{%s}`, strings.Join(metaMap, ","))
 }

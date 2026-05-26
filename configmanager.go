@@ -9,14 +9,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/generator"
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/a8m/envsubst"
-)
-
-const (
-	TERMINATING_CHAR string = `[^\'\"\s\n\\\,]` // :\@\?\/
 )
 
 // generateAPI
@@ -46,7 +42,7 @@ type ConfigManager struct {
 func New(ctx context.Context) *ConfigManager {
 	cm := &ConfigManager{}
 	cm.Config = config.NewConfig()
-	cm.generator = generator.NewGenerator(ctx).WithConfig(cm.Config)
+	cm.generator = generator.New(ctx).WithConfig(cm.Config)
 	cm.logger = log.New(io.Discard)
 	return cm
 }

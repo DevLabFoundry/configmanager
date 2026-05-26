@@ -1,0 +1,16 @@
+syntax = "proto3";
+package proto;
+option go_package = "./proto";
+
+message TokenValueRequest {
+    string token = 1;
+    bytes metadata = 2;
+}
+
+message TokenValueResponse {
+    string value = 1;
+}
+
+service TokenStore {
+    rpc Value(TokenValueRequest) returns (TokenValueResponse);
+}
