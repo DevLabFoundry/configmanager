@@ -9,3 +9,4 @@ style = "conventional"
 subject_capitalized = false
 imperative_subject = false
 allowed_types = []
+line_length = 0
