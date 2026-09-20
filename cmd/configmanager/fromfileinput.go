@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
 	"github.com/spf13/cobra"
@@ -32,7 +33,15 @@ func newFromStrCmd(rootCmd *Root) {
 			}
 			defer outputWriter.Close()
 
-			return cu.GenerateStrOut(inputReader, f.input == f.path)
+			if err := cu.GenerateStrOut(inputReader, f.input == f.path); err != nil {
+				// On failure and with strict parsing mode, remove the output file if it was created as it will contain unreplaced token instances.
+				// If the output is stdout, we don't need to remove it as it will be empty anyway.
+				if !rootCmd.rootFlags.laxMode && f.path != "stdout" {
+					_ = os.Remove(f.path)
+				}
+				return err
+			}
+			return nil
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if len(f.input) < 1 {

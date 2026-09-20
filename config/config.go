@@ -20,9 +20,9 @@ const (
 const (
 	// tokenSeparator used for identifying the end of a prefix and beginning of token
 	// see notes about special consideration for AZKVSECRET tokens
-	tokenSeparator = "://"
+	tokenSeparator string = "://"
 	// keySeparator used for accessing nested objects within the retrieved map
-	keySeparator = "|"
+	keySeparator string = "|"
 )
 
 type ImplementationPrefix string
@@ -57,7 +57,6 @@ type GenVarsConfig struct {
 	keySeparator   string
 	enableEnvSubst bool
 	enableLaxMode  bool
-	// parseAdditionalVars func(token string) TokenConfigVars
 }
 
 // NewConfig returns a new GenVarsConfig with default values

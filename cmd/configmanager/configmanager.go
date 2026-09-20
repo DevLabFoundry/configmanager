@@ -23,6 +23,8 @@ type rootCmdFlags struct {
 	tokenSeparator string
 	keySeparator   string
 	enableEnvSubst bool
+	// laxMode when enabled allows not found keys to be logged out instead of error
+	laxMode bool
 }
 
 type Root struct {
@@ -38,8 +40,9 @@ func NewRootCmd(logger log.ILogger) *Root { //channelOut, channelErr io.Writer
 			Short: fmt.Sprintf("%s CLI for retrieving and inserting config or secret variables", config.SELF_NAME),
 			Long: fmt.Sprintf(`%s CLI for retrieving config or secret variables.
 			Using a specific tokens as an array item`, config.SELF_NAME),
-			SilenceUsage: true,
-			Version:      fmt.Sprintf("%s-%s", Version, Revision),
+			SilenceUsage:  true,
+			SilenceErrors: true,
+			Version:       fmt.Sprintf("%s-%s", Version, Revision),
 		},
 		logger:    logger,
 		rootFlags: &rootCmdFlags{},
@@ -73,13 +76,18 @@ func cmdutilsInit(rootCmd *Root, cmd *cobra.Command, path string) (*cmdutils.Cmd
 	}
 
 	cm := configmanager.New(cmd.Context())
-	cm.Config.WithTokenSeparator(rootCmd.rootFlags.tokenSeparator).WithOutputPath(path).WithKeySeparator(rootCmd.rootFlags.keySeparator).WithEnvSubst(rootCmd.rootFlags.enableEnvSubst)
+	cm.Config.WithTokenSeparator(rootCmd.rootFlags.tokenSeparator).
+		WithOutputPath(path).
+		WithKeySeparator(rootCmd.rootFlags.keySeparator).
+		WithEnvSubst(rootCmd.rootFlags.enableEnvSubst).
+		WithLaxMode(rootCmd.rootFlags.laxMode)
 	gnrtr := generator.New(cmd.Context(), func(gv *generator.Generator) {
 		if rootCmd.rootFlags.verbose {
 			rootCmd.logger.SetLevel(log.DebugLvl)
 		}
 		gv.Logger = rootCmd.logger
 	}).WithConfig(cm.Config)
+	
 	cm.WithGenerator(gnrtr)
 	return cmdutils.New(cm, rootCmd.logger, outputWriter), outputWriter, nil
 }

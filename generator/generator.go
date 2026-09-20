@@ -206,7 +206,10 @@ func (c *Generator) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
 	// now we fan out the normalized value to ReplacedToken map
 	// this will ensure all found tokens will have a value assigned to them
 	replacedToken := make(ReplacedToken)
-	notfound := []string{}
+	// notfound := []string{}
+
+	var errs []error
+
 	for _, r := range ntm.GetMap() {
 		if r == nil {
 			// defensive as this shouldn't happen
@@ -216,7 +219,7 @@ func (c *Generator) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
 			c.Logger.Debug("cr.err %v, for token: %s", r.resp.Err, r.resp.Key().String())
 			if !c.config.LaxModeEnabled() {
 				// we want to collect all the errors
-				notfound = append(notfound, fmt.Sprintf("token: %s\n", r.resp.Key().String()))
+				errs = append(errs, fmt.Errorf("token: %s\n\t%v", r.resp.Key().String(), r.resp.Err.Error()))
 			}
 			continue
 		}
@@ -224,10 +227,20 @@ func (c *Generator) generate(ntm NormalizedTokenSafe) (ReplacedToken, error) {
 			replacedToken[originalToken.String()] = keySeparatorLookup(originalToken, r.resp.Value())
 		}
 	}
-	if len(notfound) > 0 {
-		return replacedToken, fmt.Errorf("%w\n%v", ErrTokenNotFound, notfound)
+	if len(errs) > 0 {
+		// return replacedToken, fmt.Errorf("%w\n%v", ErrTokenNotFound, notfound)
+		return replacedToken, fmt.Errorf("%w\n%v", ErrTokenNotFound, joinErrors(errs))
 	}
 	return replacedToken, nil
+}
+
+// joinErrors formats errors as an indented list.
+func joinErrors(errs []error) string {
+	msgs := make([]string, len(errs))
+	for i, e := range errs {
+		msgs[i] = e.Error()
+	}
+	return strings.Join(msgs, "\n  ")
 }
 
 // NormalizedToken represents the struct after all the possible tokens

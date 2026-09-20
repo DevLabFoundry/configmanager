@@ -1,0 +1,10 @@
+# committed.toml
+# Enforces Conventional Commits format: type(scope)?!?: subject
+# Versioning impact (configured in GitVersion.yaml):
+#   Major: any type with ! suffix (e.g. feat!:, fix(scope)!:) or BREAKING CHANGE in footer
+#   Minor: feat: or feat(scope):
+#   Patch: all other types (fix:, refactor:, debug:, chore:, etc.)
+
+style = "conventional"
+subject_capitalized = false
+imperative_subject = false
