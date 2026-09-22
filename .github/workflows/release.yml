@@ -14,10 +14,10 @@ permissions:
 
 jobs:
   set-version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: ${{ github.event.workflow_run.head_branch == 'master' && github.event.workflow_run.conclusion == 'success' }}
     container:
-      image: mcr.microsoft.com/dotnet/sdk:6.0
+      image: mcr.microsoft.com/dotnet/sdk:10.0
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:
@@ -39,7 +39,7 @@ jobs:
         id: gitversion
 
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: set-version
     env:
       SEMVER: ${{ needs.set-version.outputs.semVer }}
@@ -50,7 +50,7 @@ jobs:
 
       - name: Install Eirctl
         uses: ensono/actions/eirctl-setup@v0.3.1
-        with: 
+        with:
           version: 0.7.6
           isPrerelease: false
 

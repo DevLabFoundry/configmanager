@@ -20,6 +20,7 @@ var (
 
 type rootCmdFlags struct {
 	verbose        bool
+	strict         bool
 	tokenSeparator string
 	keySeparator   string
 	enableEnvSubst bool
@@ -38,14 +39,16 @@ func NewRootCmd(logger log.ILogger) *Root { //channelOut, channelErr io.Writer
 			Short: fmt.Sprintf("%s CLI for retrieving and inserting config or secret variables", config.SELF_NAME),
 			Long: fmt.Sprintf(`%s CLI for retrieving config or secret variables.
 			Using a specific tokens as an array item`, config.SELF_NAME),
-			SilenceUsage: true,
-			Version:      fmt.Sprintf("%s-%s", Version, Revision),
+			SilenceUsage:  true,
+			SilenceErrors: true,
+			Version:       fmt.Sprintf("%s-%s", Version, Revision),
 		},
 		logger:    logger,
 		rootFlags: &rootCmdFlags{},
 	}
 
 	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.verbose, "verbose", "v", false, "Verbosity level")
+	rc.Cmd.PersistentFlags().BoolVar(&rc.rootFlags.strict, "strict", false, "Exit with a non-zero exit code if any provider fails")
 	rc.Cmd.PersistentFlags().StringVarP(&rc.rootFlags.tokenSeparator, "token-separator", "s", "#", "Separator to use to mark concrete store and the key within it")
 	rc.Cmd.PersistentFlags().StringVarP(&rc.rootFlags.keySeparator, "key-separator", "k", "|", "Separator to use to mark a key look up in a map. e.g. AWSSECRETS#/token/map|key1")
 	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.enableEnvSubst, "enable-envsubst", "e", false, "Enable envsubst on input. This will fail on any unset or empty variables")
@@ -72,7 +75,7 @@ func cmdutilsInit(rootCmd *Root, cmd *cobra.Command, path string) (*cmdutils.Cmd
 	}
 
 	cm := configmanager.New(cmd.Context())
-	cm.Config.WithTokenSeparator(rootCmd.rootFlags.tokenSeparator).WithOutputPath(path).WithKeySeparator(rootCmd.rootFlags.keySeparator).WithEnvSubst(rootCmd.rootFlags.enableEnvSubst)
+	cm.Config.WithTokenSeparator(rootCmd.rootFlags.tokenSeparator).WithOutputPath(path).WithKeySeparator(rootCmd.rootFlags.keySeparator).WithEnvSubst(rootCmd.rootFlags.enableEnvSubst).WithStrict(rootCmd.rootFlags.strict)
 	gnrtr := generator.NewGenerator(cmd.Context(), func(gv *generator.GenVars) {
 		if rootCmd.rootFlags.verbose {
 			rootCmd.logger.SetLevel(log.DebugLvl)

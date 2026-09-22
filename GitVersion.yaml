@@ -1,0 +1,9 @@
+# Conventional Commits versioning rules:
+#   Major: any type with ! (e.g. feat!:, fix(scope)!:) or BREAKING CHANGE in commit footer
+#   Minor: feat: or feat(scope):
+#   Patch: all other types (fix:, refactor:, debug:, chore:, etc.)
+mode: Mainline
+commit-message-incrementing: Enabled
+major-version-bump-message: '^(\w+)(\(\w+\))?!:|BREAKING CHANGE'
+minor-version-bump-message: '^feat(\(\w+\))?:'
+patch-version-bump-message: '^(\w+)(\(\w+\))?:'

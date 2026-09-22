@@ -57,6 +57,7 @@ type GenVarsConfig struct {
 	tokenSeparator string
 	keySeparator   string
 	enableEnvSubst bool
+	strict         bool
 	// parseAdditionalVars func(token string) TokenConfigVars
 }
 
@@ -94,6 +95,12 @@ func (c *GenVarsConfig) WithEnvSubst(enabled bool) *GenVarsConfig {
 	return c
 }
 
+// WithStrict sets strict mode - errors from any provider will be returned
+func (c *GenVarsConfig) WithStrict(strict bool) *GenVarsConfig {
+	c.strict = strict
+	return c
+}
+
 // OutputPath returns the outpath set in the config
 func (c *GenVarsConfig) OutputPath() string {
 	return c.outpath
@@ -112,6 +119,11 @@ func (c *GenVarsConfig) KeySeparator() string {
 // EnvSubstEnabled returns whether or not envsubst is enabled
 func (c *GenVarsConfig) EnvSubstEnabled() bool {
 	return c.enableEnvSubst
+}
+
+// Strict returns whether strict mode is enabled
+func (c *GenVarsConfig) Strict() bool {
+	return c.strict
 }
 
 // Config returns the derefed value

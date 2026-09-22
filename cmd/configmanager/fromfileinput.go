@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/DevLabFoundry/configmanager/v2/internal/cmdutils"
 	"github.com/spf13/cobra"
@@ -30,9 +31,16 @@ func newFromStrCmd(rootCmd *Root) {
 			if err != nil {
 				return err
 			}
-			defer outputWriter.Close()
 
-			return cu.GenerateStrOut(inputReader, f.input == f.path)
+			err = cu.GenerateStrOut(inputReader, f.input == f.path)
+			outputWriter.Close()
+			if err != nil {
+				if rootCmd.rootFlags.strict && f.path != "stdout" {
+					os.Remove(f.path)
+				}
+				return err
+			}
+			return nil
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if len(f.input) < 1 {
