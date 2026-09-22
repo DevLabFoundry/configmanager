@@ -25,6 +25,7 @@ var (
 	ErrEmptyResponse        = errors.New("value retrieved but empty for token")
 	ErrServiceCallFailed    = errors.New("failed to complete the service call")
 	ErrPluginIssue          = errors.New("plugin init failed")
+	ErrPluginDownloadFailed = errors.New("plugin download failed")
 	ErrMkdirAllFail         = errors.New("unable to create the required directory")
 )
 
@@ -225,6 +226,9 @@ func (s *Store) downloadPlugin(pluginFullPath, plugin string) (string, error) {
 	resp, err := s.downloadClient.Do(req)
 	if err != nil {
 		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("%w (%s), status code: %d from %s", ErrPluginDownloadFailed, plugin, resp.StatusCode, link.String())
 	}
 
 	defer resp.Body.Close()

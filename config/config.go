@@ -52,11 +52,13 @@ var (
 
 // GenVarsConfig defines the input config object to be passed
 type GenVarsConfig struct {
-	outpath        string
-	tokenSeparator string
-	keySeparator   string
-	enableEnvSubst bool
-	enableLaxMode  bool
+	outpath         string
+	tokenSeparator  string
+	keySeparator    string
+	enableEnvSubst  bool
+	enableLaxMode   bool
+	envsubstNoUnset bool
+	envsubstNoEmpty bool
 }
 
 // NewConfig returns a new GenVarsConfig with default values
@@ -64,8 +66,9 @@ type GenVarsConfig struct {
 // keySeparator should be only a single character
 func NewConfig() *GenVarsConfig {
 	return &GenVarsConfig{
-		tokenSeparator: tokenSeparator,
-		keySeparator:   keySeparator,
+		tokenSeparator:  tokenSeparator,
+		keySeparator:    keySeparator,
+		envsubstNoUnset: true,
 	}
 }
 
@@ -95,6 +98,12 @@ func (c *GenVarsConfig) WithEnvSubst(enabled bool) *GenVarsConfig {
 	return c
 }
 
+// WithEnvSubstNoEmpty adds env subst no empty flag
+func (c *GenVarsConfig) WithEnvSubstNoEmpty(noEmpty bool) *GenVarsConfig {
+	c.envsubstNoEmpty = noEmpty
+	return c
+}
+
 // WithLaxMode adds lax mode enabled flag
 func (c *GenVarsConfig) WithLaxMode(enabled bool) *GenVarsConfig {
 	c.enableLaxMode = enabled
@@ -119,6 +128,11 @@ func (c *GenVarsConfig) KeySeparator() string {
 // EnvSubstEnabled returns whether or not envsubst is enabled
 func (c *GenVarsConfig) EnvSubstEnabled() bool {
 	return c.enableEnvSubst
+}
+
+// EnvSubstNoEmpty returns whether or not the envsubst no empty flag is enabled
+func (c *GenVarsConfig) EnvSubstNoEmpty() bool {
+	return c.envsubstNoEmpty
 }
 
 // LaxModeEnabled returns whether or not lax mode is enabled

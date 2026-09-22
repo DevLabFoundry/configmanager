@@ -75,22 +75,22 @@ type PluginDownloadInfo struct {
 	Version string
 }
 
-const corePluginBaseUrl = "https://github.com/DevLabFoundry/configmanager/releases"
+const corePluginBaseUrl = "https://github.com/DevLabFoundry/configmanager%s/releases"
 
 type PluginDownloadInfoMap map[string]*PluginDownloadInfo
 
 // corePluginMap are the configmanager maintained plugins
 var corePluginMap PluginDownloadInfoMap = map[string]*PluginDownloadInfo{
 	"empty": {
-		BaseUrl: corePluginBaseUrl,
+		BaseUrl: fmt.Sprintf(corePluginBaseUrl, ""),
 		Name:    "",
 	},
 	"awsparamstr": {
-		BaseUrl: corePluginBaseUrl,
+		BaseUrl: fmt.Sprintf(corePluginBaseUrl, "-plugin-awsparamstr"),
 		Name:    "",
 	},
 	"awssecrets": {
-		BaseUrl: corePluginBaseUrl,
+		BaseUrl: fmt.Sprintf(corePluginBaseUrl, "-plugin-awssecrets"),
 		Name:    "",
 	},
 	"azappconf": {

@@ -4,8 +4,8 @@ output: prefixed
 debug: false
 
 import:
-  - https://raw.githubusercontent.com/Ensono/eirctl/refs/tags/0.11.2/shared/build/go/eirctl.yaml
-  - https://raw.githubusercontent.com/Ensono/eirctl/refs/tags/0.11.2/shared/security/eirctl.yaml
+  - https://raw.githubusercontent.com/Ensono/eirctl/refs/tags/v0.11.23/shared/build/go/eirctl.yaml
+  - https://raw.githubusercontent.com/Ensono/eirctl/refs/tags/v0.11.23/shared/security/eirctl.yaml
 
 contexts:
   bash:
@@ -30,12 +30,13 @@ pipelines:
   unit:test:
     - task: go:build:plugin
       condition: if [ -z "$(ls -A tokenstore/provider/empty/bin/empty-* 2>/dev/null)" ]; then exit 0; else exit 1; fi;
-      name: empty
+      name: build-empty-plugin
       env:
         PLUGIN: empty
     - task: move:empty:provider
       condition: if [ -z "$(ls -A tokenstore/provider/empty/.configmanager/plugins/empty/* 2>/dev/null)" ]; then exit 0; else exit 1; fi;
-      depends_on: empty
+      depends_on: 
+        - build-empty-plugin
     - pipeline: test:unit
       depends_on: move:empty:provider
       env:
@@ -96,34 +97,14 @@ tasks:
         mkdir -p .deps
         unset GOTOOLCHAIN
         ldflags="-s -w -extldflags -static"
-        export GOPATH=/eirctl/.deps GOOS=${BUILD_GOOS} GOARCH=${BUILD_GOARCH} CGO_ENABLED=0 
+        export GOPATH=/eirctl/.deps \
+          GOOS=$(go env GOOS) \
+          GOARCH=$(go env GOARCH) CGO_ENABLED=0 \
+          BUILD_SUFFIX=$([ "$(go env GOOS)" = windows ] && printf '.exe' || printf '')
         go build -C ./tokenstore/provider/$PLUGIN -mod=readonly -buildvcs=false -ldflags="$ldflags" \
-        -o bin/$PLUGIN-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX} main.go
+        -o bin/$PLUGIN-$(go env GOOS)-$(go env GOARCH)${BUILD_SUFFIX} main.go
         echo "---"
-        echo "Built: $PLUGIN-${BUILD_GOOS}-${BUILD_GOARCH}${BUILD_SUFFIX}"
-    reset_context: true
-    variations:
-      - BUILD_GOOS: darwin
-        BUILD_GOARCH: amd64
-        BUILD_SUFFIX: ""
-      - BUILD_GOOS: darwin
-        BUILD_GOARCH: arm64
-        BUILD_SUFFIX: ""
-      - BUILD_GOOS: linux
-        BUILD_GOARCH: amd64
-        BUILD_SUFFIX: ""
-      - BUILD_GOOS: linux
-        BUILD_GOARCH: arm64
-        BUILD_SUFFIX: ""
-      - BUILD_GOOS: windows
-        BUILD_GOARCH: amd64
-        BUILD_SUFFIX: ".exe"
-      - BUILD_GOOS: windows
-        BUILD_GOARCH: arm64
-        BUILD_SUFFIX: ".exe"
-      - BUILD_GOOS: windows
-        BUILD_GOARCH: "386"
-        BUILD_SUFFIX: ".exe"
+        echo "Built: $PLUGIN-$(go env GOARCH)-$(go env GOARCH)${BUILD_SUFFIX}"
     required:
       env:
         - PLUGIN

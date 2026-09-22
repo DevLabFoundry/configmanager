@@ -23,6 +23,9 @@ type rootCmdFlags struct {
 	tokenSeparator string
 	keySeparator   string
 	enableEnvSubst bool
+	// envsubstNoEmpty indicates whether the envsubst no empty flag is enabled
+	// only takes effect if enableEnvSubst is true
+	envsubstNoEmpty bool
 	// laxMode when enabled allows not found keys to be logged out instead of error
 	laxMode bool
 }
@@ -51,7 +54,8 @@ func NewRootCmd(logger log.ILogger) *Root { //channelOut, channelErr io.Writer
 	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.verbose, "verbose", "v", false, "Verbosity level")
 	rc.Cmd.PersistentFlags().StringVarP(&rc.rootFlags.tokenSeparator, "token-separator", "s", "://", "Separator to use to mark concrete store and the key within it")
 	rc.Cmd.PersistentFlags().StringVarP(&rc.rootFlags.keySeparator, "key-separator", "k", "|", "Separator to use to mark a key look up in a map. e.g. AWSSECRETS:///token/map|key1")
-	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.enableEnvSubst, "enable-envsubst", "e", false, "Enable envsubst on input. This will fail on any unset or empty variables")
+	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.enableEnvSubst, "enable-envsubst", "e", false, "Enable envsubst on input. This will fail on any unset variables")
+	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.enableEnvSubst, "envsubst-no-empty", "", false, "Enable envsubst no empty check. This will fail on any unset and/or empty variables")
 	addSubCmds(rc)
 	return rc
 }
@@ -80,14 +84,15 @@ func cmdutilsInit(rootCmd *Root, cmd *cobra.Command, path string) (*cmdutils.Cmd
 		WithOutputPath(path).
 		WithKeySeparator(rootCmd.rootFlags.keySeparator).
 		WithEnvSubst(rootCmd.rootFlags.enableEnvSubst).
-		WithLaxMode(rootCmd.rootFlags.laxMode)
+		WithLaxMode(rootCmd.rootFlags.laxMode).
+		WithEnvSubstNoEmpty(rootCmd.rootFlags.envsubstNoEmpty)
 	gnrtr := generator.New(cmd.Context(), func(gv *generator.Generator) {
 		if rootCmd.rootFlags.verbose {
 			rootCmd.logger.SetLevel(log.DebugLvl)
 		}
 		gv.Logger = rootCmd.logger
 	}).WithConfig(cm.Config)
-	
+
 	cm.WithGenerator(gnrtr)
 	return cmdutils.New(cm, rootCmd.logger, outputWriter), outputWriter, nil
 }
