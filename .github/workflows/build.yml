@@ -83,17 +83,3 @@ jobs:
           eirctl run pipeline sonar-scan -- -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }} \
             -Dsonar.working.directory=.scannerwork \
             -Dsonar.scm.provider=git
-
-      # - name: Analyze with SonarCloud
-      #   uses: SonarSource/sonarqube-scan-action@v6
-      #   env:
-      #     # Needed to get PR information
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     # Generate a token on Sonarcloud.io, add it to the secrets of this repo with the name SONAR_TOKEN (Settings > Secrets > Actions > add new repository secret)
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      #   with:
-      #     projectBaseDir: .
-      #     args: >
-      #       -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }}
-      #       -Dsonar.working.directory=.scannerwork
-      #       -Dsonar.scm.provider=git
