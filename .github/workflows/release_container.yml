@@ -70,5 +70,5 @@ jobs:
           push: true
           build-args: Version=${{ needs.set-version-tag.outputs.semVer }},Revision=${{ github.sha }}
           tags: |
-            ghcr.io/ensono/eirctl:${{ needs.set-version-tag.outputs.semVer }}
+            ghcr.io/devlabfoundry/configmanager:${{ needs.set-version-tag.outputs.semVer }}
           platforms: linux/amd64,linux/arm64 # adjust as needed

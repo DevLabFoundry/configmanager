@@ -60,7 +60,7 @@ jobs:
       - name: Install Eirctl
         uses: ensono/actions/eirctl-setup@v0.3.1
 
-      - name: build binary
+      - name: Build binary
         run: |
           VERSION=${SEMVER} REVISION=$GITHUB_SHA eirctl run pipeline build:bin
 
@@ -74,7 +74,7 @@ jobs:
           files: ./dist/*
           prerelease: true
 
-      - name: release library
+      - name: Release library
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.email ${{ github.actor }}-ci@gha.org
