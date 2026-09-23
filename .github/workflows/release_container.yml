@@ -74,3 +74,4 @@ jobs:
           tags: |
             ghcr.io/devlabfoundry/configmanager:${{ needs.set-version-tag.outputs.semVer }}
           platforms: linux/amd64,linux/arm64 # adjust as needed
+          outputs: annotation-index.org.opencontainers.image.description=ConfigManager utility binary for managing configuration
