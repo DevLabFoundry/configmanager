@@ -4,8 +4,8 @@ output: prefixed
 debug: false
 
 import:
-  - https://raw.githubusercontent.com/Ensono/eirctl/761210b862f9871d1e0d82fd319875ea2ce2d4bd/shared/build/go/eirctl.yaml
-  - https://raw.githubusercontent.com/Ensono/eirctl/761210b862f9871d1e0d82fd319875ea2ce2d4bd/shared/security/eirctl.yaml
+  - https://raw.githubusercontent.com/Ensono/eirctl/c29c7efc577dca24dce511d5f091fda8267b5d67/shared/build/go/eirctl.yaml
+  - https://raw.githubusercontent.com/Ensono/eirctl/c29c7efc577dca24dce511d5f091fda8267b5d67/shared/security/eirctl.yaml
 
 contexts:
   bash:
@@ -16,15 +16,6 @@ contexts:
       name: docker.io/bufbuild/buf:1.61
       pull_timeout: 0
       entrypoint: /usr/bin/env
-
-  go1xalpine:
-    container:
-      name: mirror.gcr.io/golang:1.26-alpine
-    envfile:
-      exclude:
-        - GO
-        - CXX
-        - CGO
 
 pipelines:
   unit:test:
@@ -97,7 +88,7 @@ tasks:
       godoc -notes "BUG|TODO" -play -http=:6060
 
   go:build:plugin:
-    context: go1xalpine
+    context: go1x
     command:
       - |
         mkdir -p .deps
@@ -188,7 +179,7 @@ tasks:
 
   # currently unused
   proto:install:
-    context: go1xalpine
+    context: go1x
     command:
       - GOPATH=$PWD/local/go go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0
 

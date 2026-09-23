@@ -83,5 +83,5 @@ jobs:
           mkdir -p ${PWD}/.scannerwork
           chmod 777 ${PWD}/.scannerwork
           EIRCTL_CONTAINER_ARG="--user=$(id -u):$(id -g)" eirctl run pipeline sonar-scan -- -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }} \
-            -Dsonar.working.directory=${PWD}/.scannerwork \
+            -Dsonar.working.directory=/eirctl/.scannerwork \
             -Dsonar.scm.provider=git
