@@ -9,6 +9,9 @@ on:
       - master
       - main
       - v3
+  push: 
+    branches: 
+      - v3
 
 permissions:
   contents: write
@@ -17,7 +20,7 @@ jobs:
   set-version:
     name: Set Version
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.head_branch == 'master' && github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ (github.event.workflow_run.head_branch == 'master' || github.event.workflow_run.head_branch == 'v3') && github.event.workflow_run.conclusion == 'success' }}
     container:
       image: mcr.microsoft.com/dotnet/sdk:10.0
     outputs:

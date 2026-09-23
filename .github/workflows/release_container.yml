@@ -7,6 +7,11 @@ on:
       - completed
     branches:
       - main
+      - v3
+      - master
+  push:
+    branches:
+      - v3
 
 permissions:
   contents: write
@@ -14,7 +19,7 @@ permissions:
 
 jobs:
   set-version-tag:
-    if: ${{ github.event.workflow_run.head_branch == 'main' }}
+    # if: ${{ github.event.workflow_run.head_branch == 'v3' || github.event.workflow_run.head_branch == 'master' }}
     runs-on: ubuntu-24.04
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
