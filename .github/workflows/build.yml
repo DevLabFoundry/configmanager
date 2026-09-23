@@ -55,7 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Install Eirctl
         uses: ensono/actions/eirctl-setup@v0.3.1
