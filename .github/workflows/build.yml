@@ -85,7 +85,6 @@ jobs:
           cp "$GITHUB_EVENT_PATH" .github/sonar-event.json
 
           GITHUB_EVENT_PATH=/eirctl/.github/sonar-event.json \
-          EIRCTL_CONTAINER_ARG="--user=$(id -u):$(id -g)" \
           eirctl run pipeline sonar-scan -- -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }} \
             -Dsonar.working.directory=/eirctl/.scannerwork \
             -Dsonar.scm.provider=git
