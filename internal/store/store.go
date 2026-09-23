@@ -74,7 +74,7 @@ func New(ctx context.Context, opts ...StoreOpts) *Store {
 		mu: &sync.Mutex{},
 		m:  make(map[string]*Plugin),
 	}
-	os.Getwd()
+
 	s := &Store{
 		plugin: pm,
 		osOps: osOps{

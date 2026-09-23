@@ -62,7 +62,7 @@ jobs:
 
       - name: Run Lint
         run: |
-          eirctl run pipeline go:linters
+          eirctl run pipeline lint
       - name: Run Tests
         run: |
           eirctl run pipeline gha:unit:test

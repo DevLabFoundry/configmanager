@@ -22,3 +22,5 @@ local/
 .bin
 .configmanager
 .trivy/fs-sbom-file.json
+.eirctl/**/*
+!.eirctl/.gitkeep
