@@ -19,7 +19,7 @@ jobs:
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: install deps
@@ -53,7 +53,7 @@ jobs:
       GIT_TAG: ${{ needs.set-version.outputs.semVer }}
       GOVCS: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 1
 
@@ -73,16 +73,27 @@ jobs:
         with:
           report_paths: "**/.coverage/report-junit.xml"
 
-      - name: Analyze with SonarCloud
-        uses: SonarSource/sonarqube-scan-action@v6
+      - name: Run SonarCloud Scan
         env:
           # Needed to get PR information
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Generate a token on Sonarcloud.io, add it to the secrets of this repo with the name SONAR_TOKEN (Settings > Secrets > Actions > add new repository secret)
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          projectBaseDir: .
-          args: >
-            -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }}
-            -Dsonar.working.directory=.scannerwork
+        run: |
+          eirctl run pipeline sonar-scan -- -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }} \
+            -Dsonar.working.directory=.scannerwork \
             -Dsonar.scm.provider=git
+
+      # - name: Analyze with SonarCloud
+      #   uses: SonarSource/sonarqube-scan-action@v6
+      #   env:
+      #     # Needed to get PR information
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     # Generate a token on Sonarcloud.io, add it to the secrets of this repo with the name SONAR_TOKEN (Settings > Secrets > Actions > add new repository secret)
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      #   with:
+      #     projectBaseDir: .
+      #     args: >
+      #       -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }}
+      #       -Dsonar.working.directory=.scannerwork
+      #       -Dsonar.scm.provider=git

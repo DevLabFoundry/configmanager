@@ -19,9 +19,9 @@ jobs:
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       # get version
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Install GitVersion
@@ -42,7 +42,7 @@ jobs:
       SEMVER: ${{ needs.set-version-tag.outputs.semVer }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7.0.1
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2

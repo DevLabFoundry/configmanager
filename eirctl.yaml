@@ -81,6 +81,10 @@ pipelines:
     - task: trivy:filesystem:scan
       variables:
         TrivyIgnoreFile: .trivyignore.yaml
+
+  sonar-scan:
+    - task: sonar:scanner:cli
+
 tasks:
   show_docs:
     description: |
