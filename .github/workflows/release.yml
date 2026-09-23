@@ -62,7 +62,7 @@ jobs:
           VERSION=${SEMVER} REVISION=$GITHUB_SHA eirctl run pipeline build:bin
 
       - name: Release binary
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3.0.3
         with:
           tag_name: v${{ needs.set-version.outputs.semVer }}
           # TODO: add additional info to the release

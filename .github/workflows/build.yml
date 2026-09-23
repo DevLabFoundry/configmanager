@@ -80,6 +80,6 @@ jobs:
           # Generate a token on Sonarcloud.io, add it to the secrets of this repo with the name SONAR_TOKEN (Settings > Secrets > Actions > add new repository secret)
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          eirctl run pipeline sonar-scan -- -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }} \
+          EIRCTL_CONTAINER_ARG="--user=$(id -u):$(id -g)" eirctl run pipeline sonar-scan -- -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }} \
             -Dsonar.working.directory=.scannerwork \
             -Dsonar.scm.provider=git
