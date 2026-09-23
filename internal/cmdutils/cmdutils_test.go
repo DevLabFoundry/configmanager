@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/generator"
 	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 	log "github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
 	"github.com/spf13/cobra"
@@ -209,7 +209,7 @@ func Test_CmdUtils_Errors_on(t *testing.T) {
 			t.Fatal("error not caught")
 		}
 	})
-	t.Run("REtrieve from tokens in fetching ANY of the tokens", func(t *testing.T) {
+	t.Run("Retrieve from tokens in fetching ANY of the tokens", func(t *testing.T) {
 		m := &mockCfgMgr{
 			config:    config.NewConfig(),
 			parsedMap: generator.ReplacedToken{},
@@ -224,9 +224,9 @@ func Test_CmdUtils_Errors_on(t *testing.T) {
 		}
 	})
 
-	t.Run("REtrieve from tokens in fetching SOME of the tokens", func(t *testing.T) {
+	t.Run("Retrieve from tokens in fetching SOME of the tokens with LAX_MODE should only log", func(t *testing.T) {
 		m := &mockCfgMgr{
-			config:    config.NewConfig(),
+			config:    config.NewConfig().WithLaxMode(true),
 			parsedMap: generator.ReplacedToken{"IMNP://foo": "bar"},
 			err:       fmt.Errorf("err in fetching tokens"),
 		}
@@ -238,7 +238,7 @@ func Test_CmdUtils_Errors_on(t *testing.T) {
 		}
 	})
 
-	t.Run("REtrieve from string in fetching SOME of the tokens", func(t *testing.T) {
+	t.Run("Retrieve from string in fetching SOME of the tokens", func(t *testing.T) {
 		m := &mockCfgMgr{
 			config:       config.NewConfig().WithOutputPath("stdout"),
 			parsedMap:    generator.ReplacedToken{"IMNP://foo": "bar"},
@@ -256,7 +256,7 @@ func Test_CmdUtils_Errors_on(t *testing.T) {
 		}
 	})
 
-	t.Run("REtrieve from string in fetching SOME of the tokens with input/output the same", func(t *testing.T) {
+	t.Run("Retrieve from string in fetching SOME of the tokens with input/output the same", func(t *testing.T) {
 		inputF, _ := os.CreateTemp(os.TempDir(), "gen-conf-frrom-string*")
 		inputF.Write([]byte(`"IMNP://foo", "IMNP://foo2"`))
 		defer func() {

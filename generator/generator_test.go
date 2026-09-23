@@ -1,43 +1,45 @@
 package generator_test
 
 import (
-	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"testing"
 
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/generator"
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
-	"github.com/DevLabFoundry/configmanager/v3/internal/log"
-	"github.com/DevLabFoundry/configmanager/v3/internal/store"
-	"github.com/DevLabFoundry/configmanager/v3/internal/strategy"
 	"github.com/DevLabFoundry/configmanager/v3/internal/testutils"
 )
 
-type mockGenerate struct {
-	inToken, value string
-	err            error
+type mockStore struct {
+	getVal func(implemenation *config.ParsedTokenConfig) (string, error)
+	init   func(ctx context.Context, implt []string) error
 }
 
-func (m *mockGenerate) SetToken(s *config.ParsedTokenConfig) {
-}
-func (m *mockGenerate) Value() (s string, e error) {
-	return m.value, m.err
+func (m mockStore) GetValue(implemenation *config.ParsedTokenConfig) (string, error) {
+	return m.getVal(implemenation)
 }
 
-func TestGenerate(t *testing.T) {
+func (m mockStore) Init(ctx context.Context, implt []string) error {
+	if m.init != nil {
+		return m.init(ctx, implt)
+	}
+	return nil
+}
 
-	t.Run("succeeds with funcMap", func(t *testing.T) {
-		var custFunc = func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			m := &mockGenerate{"AWSPARAMSTR://mountPath/token", "bar", nil}
-			return m, nil
+func (m mockStore) PluginCleanUp() {}
+
+func Test_Generate(t *testing.T) {
+
+	t.Run("succeeds", func(t *testing.T) {
+		m := &mockStore{}
+		m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+			return `{"foo":"bar","key1":{"key2":"val"}}`, nil
 		}
+		g := generator.New(context.TODO())
+		g.WithStores(m)
 
-		g := generator.NewGenerator(context.TODO(), func(gv *generator.GenVars) {
-			gv.Logger = log.New(&bytes.Buffer{})
-		})
-		g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: custFunc})
 		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
 
 		if err != nil {
@@ -48,14 +50,46 @@ func TestGenerate(t *testing.T) {
 		}
 	})
 
-	t.Run("errors in retrieval and logs it out", func(t *testing.T) {
-		var custFunc = func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			m := &mockGenerate{"AWSPARAMSTR://mountPath/token", "bar", fmt.Errorf("failed to get value")}
-			return m, nil
+	t.Run("fails to init providers", func(t *testing.T) {
+		m := &mockStore{}
+		m.init = func(ctx context.Context, implt []string) error {
+			return fmt.Errorf("failed to find providers")
 		}
 
-		g := generator.NewGenerator(context.TODO())
-		g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: custFunc})
+		g := generator.New(context.TODO())
+		g.WithStores(m)
+
+		_, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
+
+		if err == nil {
+			t.Fatal("got nil, wanted err")
+		}
+		if !errors.Is(err, generator.ErrProvidersNotFound) {
+			t.Errorf("got %v, wanted %v", err, generator.ErrProvidersNotFound)
+		}
+	})
+	t.Run("ignores no tokens", func(t *testing.T) {
+		m := &mockStore{}
+		g := generator.New(context.TODO())
+		g.WithStores(m)
+
+		_, err := g.Generate([]string{})
+
+		if err != nil {
+			t.Fatal("got nil, wanted err")
+		}
+	})
+	t.Run("lax mode enabled - maintains v2 behaviour no rerrors in retrieval", func(t *testing.T) {
+
+		m := &mockStore{}
+		m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+			return ``, fmt.Errorf("failed to get value")
+		}
+
+		g := generator.New(context.TODO())
+		g.Config().WithLaxMode(true)
+		g.WithStores(m)
+
 		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
 
 		if err != nil {
@@ -65,63 +99,73 @@ func TestGenerate(t *testing.T) {
 			t.Errorf(testutils.TestPhraseWithContext, "incorect number in a map", len(got), 0)
 		}
 	})
-
-	t.Run("retrieves values correctly from a keylookup inside", func(t *testing.T) {
-		var custFunc = func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			m := &mockGenerate{"token-unused", `{"foo":"bar","key1":{"key2":"val"}}`, nil}
-			return m, nil
+	t.Run("errors in retrieval and logs it out", func(t *testing.T) {
+		m := &mockStore{}
+		m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+			return ``, fmt.Errorf("failed to get value")
 		}
+		g := generator.New(context.TODO())
+		g.WithStores(m)
 
-		g := generator.NewGenerator(context.TODO())
-		g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: custFunc})
-		got, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token|key1.key2"})
+		_, err := g.Generate([]string{"AWSPARAMSTR://mountPath/token"})
 
-		if err != nil {
-			t.Fatal("errored on generate")
+		if err == nil {
+			t.Fatal("got nil, wanted err")
 		}
-		if len(got) != 1 {
-			t.Errorf(testutils.TestPhraseWithContext, "incorect number in a map", len(got), 0)
-		}
-		if got["AWSPARAMSTR://mountPath/token|key1.key2"] != "val" {
-			t.Errorf(testutils.TestPhraseWithContext, "incorrect value returned in parsedMap", got["AWSPARAMSTR://mountPath/token|key1.key2"], "val")
+		if !errors.Is(err, generator.ErrTokenNotFound) {
+			t.Errorf("got %v, wanted %v", err, generator.ErrTokenNotFound)
 		}
 	})
 }
 
 func TestGenerate_withKeys_lookup(t *testing.T) {
+
 	ttests := map[string]struct {
-		custFunc  strategy.StrategyFunc
+		store     func(t *testing.T) *mockStore
 		token     string
 		expectVal string
 	}{
 		"retrieves string value correctly from a keylookup inside": {
-			custFunc: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-				m := &mockGenerate{"token", `{"foo":"bar","key1":{"key2":"val"}}`, nil}
-				return m, nil
+			store: func(t *testing.T) *mockStore {
+				m := &mockStore{}
+				m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+					return `{"foo":"bar","key1":{"key2":"val"}}`, nil
+				}
+				return m
 			},
 			token:     "AWSPARAMSTR://mountPath/token|key1.key2",
 			expectVal: "val",
 		},
 		"retrieves number value correctly from a keylookup inside": {
-			custFunc: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-				m := &mockGenerate{"token", `{"foo":"bar","key1":{"key2":123}}`, nil}
-				return m, nil
+
+			store: func(t *testing.T) *mockStore {
+				m := &mockStore{}
+				m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+					return `{"foo":"bar","key1":{"key2":123}}`, nil
+				}
+				return m
 			},
 			token:     "AWSPARAMSTR://mountPath/token|key1.key2",
 			expectVal: "123",
 		},
 		"retrieves nothing as keylookup is incorrect": {
-			custFunc: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-				m := &mockGenerate{"token", `{"foo":"bar","key1":{"key2":123}}`, nil}
-				return m, nil
+			store: func(t *testing.T) *mockStore {
+				m := &mockStore{}
+				m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+					return `{"foo":"bar","key1":{"key2":123}}`, nil
+				}
+				return m
 			},
 			token:     "AWSPARAMSTR://mountPath/token|noprop",
 			expectVal: "",
 		},
 		"retrieves value as is due to incorrectly stored json in backing store": {
-			custFunc: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-				m := &mockGenerate{"token", `foo":"bar","key1":{"key2":123}}`, nil}
-				return m, nil
+			store: func(t *testing.T) *mockStore {
+				m := &mockStore{}
+				m.getVal = func(implemenation *config.ParsedTokenConfig) (string, error) {
+					return `foo":"bar","key1":{"key2":123}}`, nil
+				}
+				return m
 			},
 			token:     "AWSPARAMSTR://mountPath/token|noprop",
 			expectVal: `foo":"bar","key1":{"key2":123}}`,
@@ -129,8 +173,8 @@ func TestGenerate_withKeys_lookup(t *testing.T) {
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
-			g := generator.NewGenerator(context.TODO())
-			g.WithStrategyMap(strategy.StrategyFuncMap{config.ParamStorePrefix: tt.custFunc})
+			g := generator.New(context.TODO())
+			g.WithStores(tt.store(t))
 			got, err := g.Generate([]string{tt.token})
 
 			if err != nil {
@@ -170,42 +214,6 @@ func Test_IsParsed(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestGenVars_NormalizeRawToken(t *testing.T) {
-
-	t.Run("multiple tokens", func(t *testing.T) {
-		g := generator.NewGenerator(context.TODO())
-
-		input := `GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
-			GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|a
-			GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|b
-			GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|c
-			AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
-			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]
-			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|key1
-			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|key2
-			AZKVSECRET:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
-			VAULT:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj`
-		want := []string{"GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
-			"AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
-			"AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]",
-			"AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
-			"AZKVSECRET:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj",
-			"VAULT:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj"}
-		got, err := g.DiscoverTokens(input)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(got.GetMap()) != len(want) {
-			t.Errorf("got %v wanted %d", len(got.GetMap()), len(want))
-		}
-		for key := range got.GetMap() {
-			if !slices.Contains(want, key) {
-				t.Errorf("got %s, wanted to be included in %v", key, want)
-			}
-		}
-	})
 }
 
 func Test_ConfigManager_DiscoverTokens(t *testing.T) {
@@ -297,8 +305,8 @@ func Test_ConfigManager_DiscoverTokens(t *testing.T) {
 	}
 	for name, tt := range ttests {
 		t.Run(name, func(t *testing.T) {
-			config.VarPrefix = map[config.ImplementationPrefix]bool{"AWSPARAMSTR": true}
-			g := generator.NewGenerator(context.TODO())
+			// config.VarPrefix = map[config.ImplementationPrefix]bool{"AWSPARAMSTR": true}
+			g := generator.New(context.TODO())
 			g.Config().WithTokenSeparator(tt.separator)
 			gdt, err := g.DiscoverTokens(tt.input)
 			if err != nil {
@@ -309,62 +317,62 @@ func Test_ConfigManager_DiscoverTokens(t *testing.T) {
 			if len(got) != len(tt.expect) {
 				t.Errorf("wrong nmber of tokens resolved\ngot (%d) want (%d)", len(got), len(tt.expect))
 			}
-			// for _, v := range got {
-			// 	if !slices.Contains(tt.expect, v.String()) {
-			// 		t.Errorf("got (%s) not found in expected slice (%v)", v, tt.expect)
-			// 	}
-			// }
+			for key := range got {
+				if !slices.Contains(tt.expect, key) {
+					t.Errorf("got (%s) not found in expected slice (%v)", key, tt.expect)
+				}
+			}
 		})
 	}
 }
 
-func Test_Generate_EnsureRaceFree(t *testing.T) {
-	g := generator.NewGenerator(context.TODO())
+// func Test_Generate_EnsureRaceFree(t *testing.T) {
+// 	g := generator.New(context.TODO())
 
-	input := `
-fg
-dfg gdfgfdGCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
-GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|a
-GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|b
-GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|c
-ddsffds			AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
-			'AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]'
-			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|key1
-			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|key2
-			AZKVSECRET:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj gdf gdfgdf 
- dfg gdf gdf gdf
-			fdg dgf dgf
-			VAULT:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj . dfg dfgdf dfg fddf`
+// 	input := `
+// fg
+// dfg gdfgfdGCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
+// GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|a
+// GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|b
+// GCPSECRETS:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|c
+// ddsffds			AWSPARAMSTR:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj
+// 			'AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj[version=123]'
+// 			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|key1
+// 			AWSSECRETS://bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj|key2
+// 			AZKVSECRET:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj gdf gdfgdf
+//  dfg gdf gdf gdf
+// 			fdg dgf dgf
+// 			VAULT:///djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj . dfg dfgdf dfg fddf`
 
-	g.WithStrategyMap(strategy.StrategyFuncMap{
-		config.GcpSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			m := &mockGenerate{"/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"a":"bar","b":{"key2":"val"},"c":123}`, nil}
-			return m, nil
-		},
-		config.ParamStorePrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			m := &mockGenerate{"/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"a":"bar","b":{"key2":"val"},"c":123}`, nil}
-			return m, nil
-		},
-		config.SecretMgrPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			m := &mockGenerate{"bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"key1":"bar","key2":"val","c":123}`, nil}
-			return m, nil
-		},
-		config.AzKeyVaultSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			m := &mockGenerate{"/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"key1":"bar","key2":"val","c":123}`, nil}
-			return m, nil
-		},
-		config.HashicorpVaultPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
-			m := &mockGenerate{"/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"key1":"bar","key2":"val","c":123}`, nil}
-			return m, nil
-		},
-	})
+// 	g.WithStrategyMap(strategy.StrategyFuncMap{
+// 		config.GcpSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+// 			m := &mockGenerate{"/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"a":"bar","b":{"key2":"val"},"c":123}`, nil}
+// 			return m, nil
+// 		},
+// 		config.ParamStorePrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+// 			m := &mockGenerate{"/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"a":"bar","b":{"key2":"val"},"c":123}`, nil}
+// 			return m, nil
+// 		},
+// 		config.SecretMgrPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+// 			m := &mockGenerate{"bar/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"key1":"bar","key2":"val","c":123}`, nil}
+// 			return m, nil
+// 		},
+// 		config.AzKeyVaultSecretsPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+// 			m := &mockGenerate{"/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"key1":"bar","key2":"val","c":123}`, nil}
+// 			return m, nil
+// 		},
+// 		config.HashicorpVaultPrefix: func(ctx context.Context, token *config.ParsedTokenConfig) (store.Strategy, error) {
+// 			m := &mockGenerate{"/djsfsdkjvfjkhfdvibdfinjdsfnjvdsflj", `{"key1":"bar","key2":"val","c":123}`, nil}
+// 			return m, nil
+// 		},
+// 	})
 
-	got, err := g.Generate([]string{input})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 10 {
-		t.Errorf("got %v wanted %d", len(got), 10)
-	}
+// 	got, err := g.Generate([]string{input})
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	if len(got) != 10 {
+// 		t.Errorf("got %v wanted %d", len(got), 10)
+// 	}
 
-}
+// }

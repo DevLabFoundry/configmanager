@@ -11,8 +11,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/generator"
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/spf13/cobra"
 )
@@ -49,7 +49,7 @@ func (c *CmdUtils) generateFromToken(tokens []string) error {
 	pm, err := c.configManager.Retrieve(tokens)
 	if err != nil {
 		// return full error to terminal if no tokens were parsed
-		if len(pm) < 1 {
+		if len(pm) < 1 || !c.configManager.GeneratorConfig().LaxModeEnabled() {
 			return err
 		}
 		c.logger.Error("%v", err)

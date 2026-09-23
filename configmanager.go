@@ -9,14 +9,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/generator"
-	"github.com/DevLabFoundry/configmanager/v3/internal/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/a8m/envsubst"
-)
-
-const (
-	TERMINATING_CHAR string = `[^\'\"\s\n\\\,]` // :\@\?\/
 )
 
 // generateAPI
@@ -46,7 +42,7 @@ type ConfigManager struct {
 func New(ctx context.Context) *ConfigManager {
 	cm := &ConfigManager{}
 	cm.Config = config.NewConfig()
-	cm.generator = generator.NewGenerator(ctx).WithConfig(cm.Config)
+	cm.generator = generator.New(ctx).WithConfig(cm.Config)
 	cm.logger = log.New(io.Discard)
 	return cm
 }
@@ -81,7 +77,7 @@ func (c *ConfigManager) RetrieveReplacedString(input string) (string, error) {
 	// replaces all env vars using strict mode of no unset and no empty
 	if c.GeneratorConfig().EnvSubstEnabled() {
 		var err error
-		input, err = envsubst.StringRestrictedNoDigit(input, true, true, false)
+		input, err = envsubst.StringRestrictedNoDigit(input, true, c.Config.EnvSubstNoEmpty(), false)
 		if err != nil {
 			return "", fmt.Errorf("%w\n%v", ErrEnvSubst, err)
 		}

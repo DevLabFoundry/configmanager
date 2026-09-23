@@ -1,10 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches: [master, main]
   pull_request:
-    branches: [master, main]
+    branches: [master, main, v3]
 
 permissions:
   contents: write
@@ -21,7 +19,7 @@ jobs:
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: install deps
@@ -31,12 +29,15 @@ jobs:
           git config user.email ${{ github.actor }}-ci@gha.org
           git config user.name ${{ github.actor }}
       - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v4.1.0
+        uses: gittools/actions/gitversion/setup@v4.7.0
         with:
           versionSpec: "6.x"
       - name: Set SemVer Version
-        uses: gittools/actions/gitversion/execute@v4.1.0
+        uses: gittools/actions/gitversion/execute@v4.7.0
         id: gitversion
+        with:
+          overrideConfig: |
+            next-version=3.0.0
 
       - name: echo VERSIONS
         run: |
@@ -52,19 +53,16 @@ jobs:
       GIT_TAG: ${{ needs.set-version.outputs.semVer }}
       GOVCS: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Install Eirctl
         uses: ensono/actions/eirctl-setup@v0.3.1
-        with:
-          version: 0.9.3
-          isPrerelease: false
 
       - name: Run Lint
         run: |
-          eirctl run pipeline lints
+          eirctl run pipeline lint
       - name: Run Tests
         run: |
           eirctl run pipeline gha:unit:test
@@ -75,16 +73,23 @@ jobs:
         with:
           report_paths: "**/.coverage/report-junit.xml"
 
-      - name: Analyze with SonarCloud
-        uses: SonarSource/sonarqube-scan-action@v6
+      - name: Run SonarCloud Scan
         env:
           # Needed to get PR information
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Generate a token on Sonarcloud.io, add it to the secrets of this repo with the name SONAR_TOKEN (Settings > Secrets > Actions > add new repository secret)
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          projectBaseDir: .
-          args: >
-            -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }}
-            -Dsonar.working.directory=.scannerwork
-            -Dsonar.scm.provider=git
+        run: |
+          mkdir -p ${PWD}/.scannerwork
+          chmod 0777 -R ${PWD}/.scannerwork
+          cp "$GITHUB_EVENT_PATH" .github/sonar-event.json
+          echo "current user: $(id -u):$(id -g)"
+          # EIRCTL_CONTAINER_ARG="--user=$(id -u):$(id -g)" \
+          set +e
+          GITHUB_EVENT_PATH=/eirctl/.github/sonar-event.json \
+          eirctl run pipeline sonar-scan -- -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }} \
+            -Dsonar.working.directory=/eirctl/.scannerwork \
+            -Dsonar.scm.provider=git || echo "deleting .scannerwork"
+          scan_status=$?
+          set -e
+          echo "Scan status: $scan_status"

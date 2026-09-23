@@ -2,12 +2,13 @@ name: release
 
 on:
   workflow_run:
-    workflows: ['CI']
+    workflows: ["CI"]
     types:
       - completed
     branches:
       - master
       - main
+      - v3
 
 permissions:
   contents: write
@@ -22,7 +23,7 @@ jobs:
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: install deps
@@ -32,12 +33,15 @@ jobs:
           git config user.email ${{ github.actor }}-ci@gha.org
           git config user.name ${{ github.actor }}
       - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v4.1.0
+        uses: gittools/actions/gitversion/setup@v4.7.0
         with:
-          versionSpec: '6.x'
+          versionSpec: "6.x"
       - name: Set SemVer Version
-        uses: gittools/actions/gitversion/execute@v4.1.0
+        uses: gittools/actions/gitversion/execute@v4.7.0
         id: gitversion
+        with:
+          overrideConfig: |
+            next-version=3.0.0
 
   release:
     name: Release
@@ -46,22 +50,19 @@ jobs:
     env:
       SEMVER: ${{ needs.set-version.outputs.semVer }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 1
 
       - name: Install Eirctl
         uses: ensono/actions/eirctl-setup@v0.3.1
-        with: 
-          version: 0.7.6
-          isPrerelease: false
 
       - name: build binary
         run: |
           VERSION=${SEMVER} REVISION=$GITHUB_SHA eirctl run pipeline build:bin
 
       - name: Release binary
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3.0.3
         with:
           tag_name: v${{ needs.set-version.outputs.semVer }}
           # TODO: add additional info to the release
