@@ -80,13 +80,13 @@ jobs:
           # Generate a token on Sonarcloud.io, add it to the secrets of this repo with the name SONAR_TOKEN (Settings > Secrets > Actions > add new repository secret)
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          # mkdir -p ${PWD}/.scannerwork
-          # chmod 0777 -R ${PWD}/.scannerwork
+          mkdir -p ${PWD}/.scannerwork
+          chmod 0777 -R ${PWD}/.scannerwork
           cp "$GITHUB_EVENT_PATH" .github/sonar-event.json
-          
+          echo "current user: $(id -u):$(id -g)"
+          # EIRCTL_CONTAINER_ARG="--user=$(id -u):$(id -g)" \
           set +e
           GITHUB_EVENT_PATH=/eirctl/.github/sonar-event.json \
-          EIRCTL_CONTAINER_ARG="--user=$(id -u):$(id -g)" \
           eirctl run pipeline sonar-scan -- -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }} \
             -Dsonar.working.directory=/eirctl/.scannerwork \
             -Dsonar.scm.provider=git || echo "deleting .scannerwork"
