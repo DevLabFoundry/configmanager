@@ -37,6 +37,7 @@ type Root struct {
 }
 
 func NewRootCmd(logger log.ILogger) *Root { //channelOut, channelErr io.Writer
+	var unused bool
 	rc := &Root{
 		Cmd: &cobra.Command{
 			Use:   config.SELF_NAME,
@@ -52,10 +53,16 @@ func NewRootCmd(logger log.ILogger) *Root { //channelOut, channelErr io.Writer
 	}
 
 	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.verbose, "verbose", "v", false, "Verbosity level")
+	rc.Cmd.PersistentFlags().BoolVarP(&unused, "strict", "", true, "")
+	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.laxMode, "no-strict", "", false, "Disable strict mode. By default, strict mode is enabled.")
 	rc.Cmd.PersistentFlags().StringVarP(&rc.rootFlags.tokenSeparator, "token-separator", "s", "://", "Separator to use to mark concrete store and the key within it")
 	rc.Cmd.PersistentFlags().StringVarP(&rc.rootFlags.keySeparator, "key-separator", "k", "|", "Separator to use to mark a key look up in a map. e.g. AWSSECRETS:///token/map|key1")
 	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.enableEnvSubst, "enable-envsubst", "e", false, "Enable envsubst on input. This will fail on any unset variables")
 	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.enableEnvSubst, "envsubst-no-empty", "", false, "Enable envsubst no empty check. This will fail on any unset and/or empty variables")
+
+	// Mark the --strict flag as deprecated since it will be removed in future versions
+	rc.Cmd.PersistentFlags().MarkDeprecated("strict", "The behaviour is strict by default, you can disable this by specifying --no-strict")
+	// rc.Cmd.Flags().SetOutput(os.Stderr)
 	addSubCmds(rc)
 	return rc
 }

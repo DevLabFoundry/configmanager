@@ -83,8 +83,6 @@ jobs:
           mkdir -p ${PWD}/.scannerwork
           chmod 0777 -R ${PWD}/.scannerwork
           cp "$GITHUB_EVENT_PATH" .github/sonar-event.json
-          echo "current user: $(id -u):$(id -g)"
-          # EIRCTL_CONTAINER_ARG="--user=$(id -u):$(id -g)" \
           set +e
           GITHUB_EVENT_PATH=/eirctl/.github/sonar-event.json \
           eirctl run pipeline sonar-scan -- -Dsonar.projectVersion=${{ needs.set-version.outputs.semVer }} \
