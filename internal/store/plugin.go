@@ -7,6 +7,7 @@ import (
 	"os/exec"
 
 	"github.com/DevLabFoundry/configmanager/v3/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/DevLabFoundry/configmanager/v3/tokenstore"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -22,10 +23,11 @@ type Plugin struct {
 	Version         string
 	ClientCleanUp   func()
 	tokenStore      tokenstore.TokenStore
+	logger          log.ILogger
 }
 
 // NewPlugin Plugin gets called once per implementation
-func NewPlugin(ctx context.Context, path string) (*Plugin, error) {
+func NewPlugin(ctx context.Context, path string, logger log.ILogger) (*Plugin, error) {
 	// We're a host. Start by launching the plugin process.
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig:  tokenstore.Handshake,
@@ -53,6 +55,7 @@ func NewPlugin(ctx context.Context, path string) (*Plugin, error) {
 	p := &Plugin{
 		ClientCleanUp: client.Kill,
 		tokenStore:    ts,
+		logger:        logger,
 	}
 	return p, nil
 }
@@ -62,6 +65,7 @@ func (p *Plugin) WithTokenStore(ts tokenstore.TokenStore) {
 }
 
 func (p *Plugin) GetValue(token *config.ParsedTokenConfig) (string, error) {
+	p.logger.Debug(fmt.Sprintf("retrieving value for token: %v", token.StoreToken()))
 	result, err := p.tokenStore.Value(token.StoreToken(), []byte(token.Metadata()))
 	if err != nil {
 		return "", fmt.Errorf("%w - (%s), %v", ErrRetrieveFailed, token.String(), err)

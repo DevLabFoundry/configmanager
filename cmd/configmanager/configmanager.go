@@ -10,6 +10,7 @@ import (
 	"github.com/DevLabFoundry/configmanager/v3/generator"
 	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -86,7 +87,11 @@ func cmdutilsInit(rootCmd *Root, cmd *cobra.Command, path string) (*cmdutils.Cmd
 		return nil, nil, err
 	}
 
+	if rootCmd.rootFlags.verbose {
+		rootCmd.logger.SetLevel(log.DebugLvl)
+	}
 	cm := configmanager.New(cmd.Context())
+	cm.WithLogger(rootCmd.logger)
 	cm.Config.WithTokenSeparator(rootCmd.rootFlags.tokenSeparator).
 		WithOutputPath(path).
 		WithKeySeparator(rootCmd.rootFlags.keySeparator).
@@ -94,11 +99,10 @@ func cmdutilsInit(rootCmd *Root, cmd *cobra.Command, path string) (*cmdutils.Cmd
 		WithLaxMode(rootCmd.rootFlags.laxMode).
 		WithEnvSubstNoEmpty(rootCmd.rootFlags.envsubstNoEmpty)
 	gnrtr := generator.New(cmd.Context(), func(gv *generator.Generator) {
-		if rootCmd.rootFlags.verbose {
-			rootCmd.logger.SetLevel(log.DebugLvl)
-		}
 		gv.Logger = rootCmd.logger
-	}).WithConfig(cm.Config)
+	}).
+		WithConfig(cm.Config).
+		WithStores(store.New(cmd.Context(), store.WithLogger(rootCmd.logger)))
 
 	cm.WithGenerator(gnrtr)
 	return cmdutils.New(cm, rootCmd.logger, outputWriter), outputWriter, nil
