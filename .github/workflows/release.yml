@@ -9,6 +9,9 @@ on:
       - master
       - main
       - v3
+  push:
+    branches:
+      - v3
 
 permissions:
   contents: write
