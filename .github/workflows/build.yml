@@ -4,7 +4,10 @@ on:
   pull_request:
     branches: [master, main, v3]
   push:
-    branches: [master, main, v3]
+    branches: 
+      - master
+      - main
+      - v3
 
 permissions:
   contents: write
@@ -60,7 +63,10 @@ jobs:
           fetch-depth: 0
 
       - name: Install Eirctl
-        uses: ensono/actions/eirctl-setup@v0.3.1
+        uses: ensono/actions/eirctl-setup@55f3b0ea2cf99acef7eabc873fcf088834ef4582
+        with:
+          version: v0.11.29
+          sha256: sha256:c32bbb8984b78e460fbe6daebb36d872d7fbc708d45165557b246a5e88c041f9
 
       - name: Run Lint
         run: |
