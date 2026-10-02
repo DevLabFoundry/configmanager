@@ -62,7 +62,7 @@ func NewRootCmd(logger log.ILogger) *Root { //channelOut, channelErr io.Writer
 	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.enableEnvSubst, "envsubst-no-empty", "", false, "Enable envsubst no empty check. This will fail on any unset and/or empty variables")
 
 	// Mark the --strict flag as deprecated since it will be removed in future versions
-	rc.Cmd.PersistentFlags().MarkDeprecated("strict", "The behaviour is strict by default, you can disable this by specifying --no-strict")
+	_ = rc.Cmd.PersistentFlags().MarkDeprecated("strict", "The behaviour is strict by default, you can disable this by specifying --no-strict")
 	// rc.Cmd.Flags().SetOutput(os.Stderr)
 	addSubCmds(rc)
 	return rc
