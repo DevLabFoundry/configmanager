@@ -1,12 +1,12 @@
 module github.com/DevLabFoundry/configmanager/v3
 
-go 1.27
+go 1.27.0
 
-toolchain go1.27.1
+toolchain go1.27.3
 
 require (
+	github.com/Ensono/eirctl v0.11.34
 	github.com/a8m/envsubst v1.4.3
-	github.com/go-test/deep v1.1.1
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-plugin v1.8.0
 	github.com/schollz/progressbar/v3 v3.19.1
@@ -31,10 +31,10 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
-	golang.org/x/net v0.59.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/term v0.46.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/term v0.47.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260921155816-b14227669459 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
