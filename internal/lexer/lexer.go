@@ -69,8 +69,6 @@ func (l *Lexer) NextToken() token.Token {
 	// identify the dynamically selected key separator
 	case l.keySeparator:
 		tok = token.Token{Type: token.CONFIGMANAGER_TOKEN_KEY_PATH_SEPARATOR, Literal: string(l.ch)}
-		// l.readChar()
-
 	// Specific cases for BEGIN_CONFIGMANAGER_TOKEN possibilities
 	case 'A':
 		if l.peekChar() == 'W' {
