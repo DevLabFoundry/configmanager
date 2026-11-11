@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"os"
 
@@ -199,7 +200,7 @@ func (p *Parser) buildConfigManagerTokenFromBlocks(configManagerToken *config.Pa
 func (p *Parser) buildKeyPathSeparator(configManagerToken *config.ParsedTokenConfig) error {
 	// advance to next token i.e. post the path separator
 	p.nextToken()
-	keyPath := ""
+	keyPath := strings.Builder{}
 	if p.peekTokenIs(token.EOF) {
 		// if the next token EOF we set the path as current token and exit
 		// otherwise we would never hit the below loop
@@ -209,7 +210,7 @@ func (p *Parser) buildKeyPathSeparator(configManagerToken *config.ParsedTokenCon
 	for !p.peekTokenIs(token.EOF) {
 		if p.peekTokenIs(token.BEGIN_META_CONFIGMANAGER_TOKEN) {
 			// add current token to the keysPath and move onto the metadata
-			keyPath += p.currentToken.Literal
+			keyPath.WriteString(p.currentToken.Literal)
 			p.nextToken()
 			if err := p.buildMetadata(configManagerToken); err != nil {
 				return err
@@ -217,20 +218,20 @@ func (p *Parser) buildKeyPathSeparator(configManagerToken *config.ParsedTokenCon
 			break
 		}
 		// touching another token or end of token
-		if p.peekTokenIs(token.BEGIN_CONFIGMANAGER_TOKEN) || p.peekTokenIsEnd() {
-			keyPath += p.currentToken.Literal
+		if p.peekTokenIs(token.BEGIN_CONFIGMANAGER_TOKEN) || p.peekTokenIsEnd() || !p.peekTokenIs(token.TEXT) {
+			keyPath.WriteString(p.currentToken.Literal)
 			break
 		}
-		keyPath += p.currentToken.Literal
+		keyPath.WriteString(p.currentToken.Literal)
 		p.nextToken()
 		if p.peekTokenIs(token.EOF) {
 			// check if the next token is EOF once advanced
 			// if it is we want to consume current token else it will be skipped
-			keyPath += p.currentToken.Literal
+			keyPath.WriteString(p.currentToken.Literal)
 			break
 		}
 	}
-	configManagerToken.WithKeyPath(keyPath)
+	configManagerToken.WithKeyPath(keyPath.String())
 	return nil
 }
 

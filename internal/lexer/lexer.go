@@ -4,6 +4,8 @@
 package lexer
 
 import (
+	"strings"
+
 	"github.com/DevLabFoundry/configmanager/v3/config"
 	"github.com/DevLabFoundry/configmanager/v3/internal/token"
 )
@@ -67,6 +69,8 @@ func (l *Lexer) NextToken() token.Token {
 	// identify the dynamically selected key separator
 	case l.keySeparator:
 		tok = token.Token{Type: token.CONFIGMANAGER_TOKEN_KEY_PATH_SEPARATOR, Literal: string(l.ch)}
+		// l.readChar()
+
 	// Specific cases for BEGIN_CONFIGMANAGER_TOKEN possibilities
 	case 'A':
 		if l.peekChar() == 'W' {
@@ -210,15 +214,15 @@ func (l *Lexer) setTextSeparatorToken() token.Token {
 // peekIsBeginOfToken attempts to identify the possible token
 func (l *Lexer) peekIsBeginOfToken(possibleBeginToken []config.ImplementationPrefix, charsRead string) (bool, string, config.ImplementationPrefix) {
 	for _, pbt := range possibleBeginToken {
-		configToken := ""
+		var configToken strings.Builder
 		pbtWithTokenSep := string(pbt[len(charsRead):]) + l.config.TokenSeparator()
 		for i := 0; i < len(pbtWithTokenSep); i++ {
-			configToken += string(l.peekChar())
+			configToken.WriteString(string(l.peekChar()))
 			l.readChar()
 		}
 
-		if configToken == pbtWithTokenSep {
-			return true, charsRead + configToken, pbt
+		if configToken.String() == pbtWithTokenSep {
+			return true, charsRead + configToken.String(), pbt
 		}
 		l.resetAfterPeek(len(pbtWithTokenSep))
 	}
