@@ -26,7 +26,7 @@ pipelines:
         PLUGIN: empty
     - task: move:empty:provider
       condition: if [ -z "$(ls -A tokenstore/provider/empty/.configmanager/plugins/empty/* 2>/dev/null)" ]; then exit 0; else exit 1; fi;
-      depends_on: 
+      depends_on:
         - build-empty-plugin
     - pipeline: test:unit
       depends_on: move:empty:provider
@@ -68,7 +68,7 @@ pipelines:
         PLUGIN: empty
 
   lint:
-    - task: go:lint
+    - task: golint:ci
     - task: trivy:filesystem:scan
       variables:
         TrivyIgnoreFile: .trivyignore.yaml
@@ -77,6 +77,14 @@ pipelines:
     - task: sonar:scanner:cli
 
 tasks:
+  golint:ci:
+    description: Runs golangci-lint in CI mode
+    context: go1x
+    command:
+      - |
+        wget -O- -nv https://golangci-lint.run/install.sh | sh -s -- -b .eirctl v2.15.0
+        exec .eirctl/golangci-lint run {{ .Args }}
+
   show_docs:
     description: |
       Opens a webview with godoc running
