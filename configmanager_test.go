@@ -380,7 +380,6 @@ func Test_Generator_Config_(t *testing.T) {
 				cm.Config.WithOutputPath(tt.outputPath)
 			}
 			got := cm.GeneratorConfig()
-			// if diff := deep.Equal(got, &tt.expect); diff != nil {
 			if !reflect.DeepEqual(got, &tt.expect) {
 				t.Errorf(testutils.TestPhraseWithContext, "generator config", fmt.Sprintf("%v", got), fmt.Sprintf("%v", tt.expect))
 			}
