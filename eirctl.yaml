@@ -109,7 +109,7 @@ tasks:
         go build -C ./tokenstore/provider/$PLUGIN -mod=readonly -buildvcs=false -ldflags="$ldflags" \
         -o bin/$PLUGIN-$(go env GOOS)-$(go env GOARCH)${BUILD_SUFFIX} main.go
         echo "---"
-        echo "Built: $PLUGIN-$(go env GOARCH)-$(go env GOARCH)${BUILD_SUFFIX}"
+        echo "Built: $PLUGIN-$(go env GOOS)-$(go env GOARCH)${BUILD_SUFFIX}"
     required:
       env:
         - PLUGIN
