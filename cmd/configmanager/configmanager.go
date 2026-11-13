@@ -11,6 +11,7 @@ import (
 	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/DevLabFoundry/configmanager/v3/internal/store"
+	"github.com/Ensono/eirctl/selfupdate"
 	"github.com/spf13/cobra"
 )
 
@@ -74,6 +75,8 @@ func addSubCmds(rootCmd *Root) {
 	newRetrieveCmd(rootCmd)
 	newInsertCmd(rootCmd)
 	newInitCmd(rootCmd)
+	uc := selfupdate.New("configmanager", "https://github.com/DevLabFoundry/configmanager/releases")
+	uc.AddToRootCommand(rootCmd.Cmd)
 }
 
 func (rc *Root) Execute(ctx context.Context) error {
