@@ -77,6 +77,19 @@ func Test_ParserBlocks(t *testing.T) {
 				{string(config.ParamStorePrefix), "/config", "qp2"},
 			},
 		},
+		"mixed after key_path": {
+			`proto://AWSPARAMSTR:///config|endpoint/some/path
+foo=AWSSECRETS:///creds|password_one?param2=bar
+foo2=AWSSECRETS:///creds|password_two/not/partoftoken?param2=bar
+foo3=AWSSECRETS:///creds|password_three/?not/partoftoken?param2=bar
+`,
+			[][3]string{
+				{string(config.ParamStorePrefix), "/config", "endpoint"},
+				{string(config.SecretMgrPrefix), "/creds", "password_one"},
+				{string(config.SecretMgrPrefix), "/creds", "password_two"},
+				{string(config.SecretMgrPrefix), "/creds", "password_three"},
+			},
+		},
 	}
 
 	for name, tt := range ttests {
