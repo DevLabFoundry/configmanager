@@ -10,6 +10,8 @@ import (
 	"github.com/DevLabFoundry/configmanager/v3/generator"
 	"github.com/DevLabFoundry/configmanager/v3/internal/cmdutils"
 	"github.com/DevLabFoundry/configmanager/v3/internal/log"
+	"github.com/DevLabFoundry/configmanager/v3/internal/store"
+	"github.com/Ensono/eirctl/selfupdate"
 	"github.com/spf13/cobra"
 )
 
@@ -61,7 +63,7 @@ func NewRootCmd(logger log.ILogger) *Root { //channelOut, channelErr io.Writer
 	rc.Cmd.PersistentFlags().BoolVarP(&rc.rootFlags.enableEnvSubst, "envsubst-no-empty", "", false, "Enable envsubst no empty check. This will fail on any unset and/or empty variables")
 
 	// Mark the --strict flag as deprecated since it will be removed in future versions
-	rc.Cmd.PersistentFlags().MarkDeprecated("strict", "The behaviour is strict by default, you can disable this by specifying --no-strict")
+	_ = rc.Cmd.PersistentFlags().MarkDeprecated("strict", "The behaviour is strict by default, you can disable this by specifying --no-strict")
 	// rc.Cmd.Flags().SetOutput(os.Stderr)
 	addSubCmds(rc)
 	return rc
@@ -73,6 +75,8 @@ func addSubCmds(rootCmd *Root) {
 	newRetrieveCmd(rootCmd)
 	newInsertCmd(rootCmd)
 	newInitCmd(rootCmd)
+	uc := selfupdate.New("configmanager", "https://github.com/DevLabFoundry/configmanager/releases")
+	uc.AddToRootCommand(rootCmd.Cmd)
 }
 
 func (rc *Root) Execute(ctx context.Context) error {
@@ -86,7 +90,11 @@ func cmdutilsInit(rootCmd *Root, cmd *cobra.Command, path string) (*cmdutils.Cmd
 		return nil, nil, err
 	}
 
+	if rootCmd.rootFlags.verbose {
+		rootCmd.logger.SetLevel(log.DebugLvl)
+	}
 	cm := configmanager.New(cmd.Context())
+	cm.WithLogger(rootCmd.logger)
 	cm.Config.WithTokenSeparator(rootCmd.rootFlags.tokenSeparator).
 		WithOutputPath(path).
 		WithKeySeparator(rootCmd.rootFlags.keySeparator).
@@ -94,11 +102,10 @@ func cmdutilsInit(rootCmd *Root, cmd *cobra.Command, path string) (*cmdutils.Cmd
 		WithLaxMode(rootCmd.rootFlags.laxMode).
 		WithEnvSubstNoEmpty(rootCmd.rootFlags.envsubstNoEmpty)
 	gnrtr := generator.New(cmd.Context(), func(gv *generator.Generator) {
-		if rootCmd.rootFlags.verbose {
-			rootCmd.logger.SetLevel(log.DebugLvl)
-		}
 		gv.Logger = rootCmd.logger
-	}).WithConfig(cm.Config)
+	}).
+		WithConfig(cm.Config).
+		WithStores(store.New(cmd.Context(), store.WithLogger(rootCmd.logger)))
 
 	cm.WithGenerator(gnrtr)
 	return cmdutils.New(cm, rootCmd.logger, outputWriter), outputWriter, nil

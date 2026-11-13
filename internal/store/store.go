@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/DevLabFoundry/configmanager/v3/config"
+	"github.com/DevLabFoundry/configmanager/v3/internal/log"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -65,6 +66,7 @@ type Store struct {
 	osOps           osOps
 	downloadInfoMap PluginDownloadInfoMap
 	downloadClient  downloadClient
+	logger          log.ILogger
 }
 
 type StoreOpts func(s *Store)
@@ -87,6 +89,7 @@ func New(ctx context.Context, opts ...StoreOpts) *Store {
 		},
 		downloadInfoMap: corePluginMap,
 		downloadClient:  &http.Client{},
+		logger:          log.New(io.Discard),
 	}
 
 	for _, o := range opts {
@@ -114,6 +117,12 @@ func WithAdditionalPluginInfo(v PluginDownloadInfoMap) StoreOpts {
 	}
 }
 
+func WithLogger(v log.ILogger) StoreOpts {
+	return func(s *Store) {
+		s.logger = v
+	}
+}
+
 // Init ensures all the discovered tokens have their implementations initialised
 //
 // NOTE: it is important to package the providers at a build stage
@@ -132,7 +141,7 @@ func (s *Store) Init(ctx context.Context, implt []string) error {
 			return fmt.Errorf("configmanager provider: ( %s ) %w\n%v", plugin, ErrPluginIssue, err)
 		}
 		// Initialising the plugins will ensure the client (configmanager-core) and the server (token-store-plugin-provider) are at expected versions of each other
-		p, err := NewPlugin(ctx, plpath)
+		p, err := NewPlugin(ctx, plpath, s.logger)
 		if err != nil {
 			// wrap in init error
 			return err

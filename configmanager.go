@@ -22,6 +22,7 @@ type generateAPI interface {
 
 type ConfigManager struct {
 	Config    *config.GenVarsConfig
+	ctx       context.Context
 	generator generateAPI
 	logger    log.ILogger
 }
@@ -42,6 +43,7 @@ type ConfigManager struct {
 func New(ctx context.Context) *ConfigManager {
 	cm := &ConfigManager{}
 	cm.Config = config.NewConfig()
+	cm.ctx = ctx
 	cm.generator = generator.New(ctx).WithConfig(cm.Config)
 	cm.logger = log.New(io.Discard)
 	return cm
@@ -81,6 +83,7 @@ func (c *ConfigManager) RetrieveReplacedString(input string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("%w\n%v", ErrEnvSubst, err)
 		}
+		c.logger.Debug("envsubst result: %s", input)
 	}
 
 	// calling the same Generate method with the input as single item in a slice

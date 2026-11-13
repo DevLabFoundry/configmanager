@@ -52,8 +52,10 @@ func New(ctx context.Context, opts ...Opts) *Generator {
 
 func new(ctx context.Context, opts ...Opts) *Generator {
 	conf := config.NewConfig()
+	l := log.New(io.Discard)
+
 	g := &Generator{
-		Logger: log.New(io.Discard),
+		Logger: l,
 		ctx:    ctx,
 		// return using default config
 		store:  store.New(ctx),
